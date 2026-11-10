@@ -38,6 +38,8 @@ jobs:
           fi
           # New cache name on every deploy so phones pick up the update
           sed -i "s/smiskee-v1/smiskee-${GITHUB_SHA::8}/" public/sw.js
+          # Version stamp so browsers load the new files right away
+          sed -i "s/?v=dev/?v=${GITHUB_SHA::8}/g" public/index.html
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
