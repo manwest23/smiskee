@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Connect the database (from repository variables)
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          STAFF_EMAIL_DOMAIN: ${{ vars.STAFF_EMAIL_DOMAIN }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            printf 'window.SMISKEE_CONFIG = { supabaseUrl: "%s", supabaseAnonKey: "%s", staffEmailDomain: "%s" };\n' \
+              "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "${STAFF_EMAIL_DOMAIN:-staff.smiskee.app}" > public/config.js
+            echo "Database connected: $SUPABASE_URL"
+          else
+            echo "::warning::SUPABASE_URL or SUPABASE_ANON_KEY is not set, so SMISKEE is deployed in demo mode."
+          fi
+          # New cache name on every deploy so phones pick up the update
+          sed -i "s/smiskee-v1/smiskee-${GITHUB_SHA::8}/" public/sw.js
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - id: deployment
+        uses: actions/deploy-pages@v4
