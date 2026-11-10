@@ -2,7 +2,7 @@
 
 A motivation web app for bank employees. Staff check in on their stress level each day, play short games (some hosted live by their leaders), earn points for vouchers, and get a weekly recap with motivation for the week ahead.
 
-**Live app:** https://manwest23.github.io/smiskee/
+**Live app:** https://smiskee.site/ (domain registered at Namecheap; DNS points to GitHub Pages)
 
 ## How it works
 
