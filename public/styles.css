@@ -11,8 +11,12 @@ img{max-width:100%}
   --field-border:#858d86; --placeholder:#6e756f; --focus:#1f4f40;
   --calm:#315c4c; --calm-bg:#e6eee8; --press:#875a12; --press-bg:#f6eddc; --high:#8b4e48; --high-bg:#f3e3e0;
   --shadow:0 8px 25px rgba(24,59,50,.063);
-  --f-ui:"Inter",-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
-  --f-quote:Georgia,"Times New Roman",serif;
+  /* San Francisco family on Apple devices (SF Pro Text/Display switch automatically by size),
+     with each platform's own system font elsewhere. */
+  --f-ui:-apple-system,BlinkMacSystemFont,system-ui,"SF Pro Text","SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-rounded:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --f-quote:var(--f-ui);
 }
 :root{color-scheme:light}
 *{box-sizing:border-box}
@@ -168,7 +172,7 @@ label.f{display:block;font-size:0.8125rem;font-weight:700;margin-bottom:6px}
 .voucher::before{left:-7px}.voucher::after{right:-7px}
 .reward .grow{flex:1;min-width:0}
 .reward h3{font-size:0.9375rem;font-weight:700}
-.code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;font-size:1.25rem;letter-spacing:.08em;background:var(--surface-2);border:1.5px dashed var(--line);border-radius:12px;padding:14px;text-align:center;user-select:all}
+.code{font-family:var(--f-mono);font-weight:700;font-size:1.25rem;letter-spacing:.08em;background:var(--surface-2);border:1.5px dashed var(--line);border-radius:12px;padding:14px;text-align:center;user-select:all}
 
 /* recap */
 .tabs{display:grid;grid-template-columns:1fr 1fr;background:rgba(255,255,255,.08);border-radius:12px;padding:4px}
@@ -183,7 +187,7 @@ label.f{display:block;font-size:0.8125rem;font-weight:700;margin-bottom:6px}
 .plot .b.none{background:none;border:1.5px dashed var(--line);height:100%;opacity:.6}
 .plot .b em{position:absolute;top:-18px;left:0;right:0;text-align:center;font-style:normal;font-size:0.6875rem;font-weight:800;color:var(--ink)}
 .xax{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;font-size:0.6875rem;font-weight:700;color:var(--muted);text-align:center;margin-left:30px;margin-top:6px}
-.quote{font-family:var(--f-quote);font-style:italic;font-size:1.0625rem;line-height:1.45}
+.quote{font-family:var(--f-quote);font-style:italic;font-weight:500;font-size:1.0625rem;line-height:1.45;letter-spacing:-.005em}
 .intent{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:var(--surface-2);border:1.5px solid transparent;border-radius:14px;padding:12px 14px;font-size:0.875rem}
 .intent .box{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);flex:none;display:grid;place-items:center;margin-top:1px}
 .intent[aria-pressed="true"]{border-color:var(--calm);background:var(--calm-bg)}
@@ -339,7 +343,7 @@ fieldset.bare legend{padding:0}
 .bell,.avatar,.install.icon{width:44px;height:44px}
 .link,.inline-link{min-height:24px}
 .sm-btn{padding:10px 14px;font-size:.8125rem;min-height:40px}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;letter-spacing:.06em}
+.mono{font-family:var(--f-mono);font-weight:700;letter-spacing:.06em}
 ol.steps{list-style:none;padding:0;margin:0}
 .opts.two{display:grid;grid-template-columns:1fr 1fr}
 
@@ -393,3 +397,40 @@ ol.steps{list-style:none;padding:0;margin:0}
 .card.forest .eyebrow{color:#efd8ab!important}
 /* Titles and page regions get focus after navigation (for screen readers) but never show a ring */
 [tabindex="-1"]:focus,[tabindex="-1"]:focus-visible,h1:focus,h1:focus-visible{outline:none!important;box-shadow:none!important}
+
+/* ---------- San Francisco variants ---------- */
+/* SF Pro Rounded for scores, points and badges; SF Mono for codes */
+.big-stress,.num,.stat b,.result .big,.voucher b,.wheel span,.hub,.bell .count,.dot,.mc,.game .gi,.chip.gold,.pts,.rank,.avatar,.host{font-family:var(--f-rounded)}
+.code,.mono{font-family:var(--f-mono)}
+/* SF Pro Display tracking for large titles, SF Pro Text tracking for body */
+h1{letter-spacing:-.025em}
+h2,h3,.sec-title{letter-spacing:-.015em}
+body{letter-spacing:-.006em;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility}
+.eyebrow{letter-spacing:.08em}
+
+/* ---------- auto-hiding bottom menu ---------- */
+.nav{will-change:transform;transform:translate3d(-50%,0,0);transition:transform .38s cubic-bezier(.22,.9,.24,1),box-shadow .38s ease;backface-visibility:hidden}
+.nav.away{transform:translate3d(-50%,calc(100% + 12px),0);box-shadow:none}
+.nav:focus-within{transform:translate3d(-50%,0,0)}
+.toast{transition:bottom .38s cubic-bezier(.22,.9,.24,1)}
+body.nav-away .toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+@media (prefers-reduced-motion:reduce){.nav{transition:none!important}}
+
+/* ---------- Customize Home ---------- */
+.customize-btn{margin-top:4px}
+.kudos-ib{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--gold-bg);color:var(--gold-ink);flex:none}
+.arrange{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.arr-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px 10px 8px 4px;position:relative;will-change:transform;touch-action:pan-y}
+.arr-item .ib{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--surface-2);color:var(--forest-2);flex:none}
+.arr-item .grow{flex:1;min-width:0;display:flex;flex-direction:column}
+.arr-item .t{font-weight:700;font-size:.875rem}
+.arr-item .s{font-size:.75rem;color:var(--muted);line-height:1.35}
+.arr-item.off .ib,.arr-item.off .t,.arr-item.off .s{opacity:.55}
+.arr-item.dragging{z-index:5;box-shadow:0 14px 34px rgba(24,59,50,.22);border-color:var(--forest-2);transition:none}
+.handle{width:36px;height:44px;border:none;background:none;color:var(--muted);display:grid;place-items:center;cursor:grab;touch-action:none;flex:none}
+.arr-item.dragging .handle{cursor:grabbing}
+.arr-btns{display:flex;flex-direction:column;gap:2px;flex:none}
+.arr-btns button{width:34px;height:26px;border:none;border-radius:8px;background:var(--surface-2);color:var(--ink);display:grid;place-items:center}
+.arr-btns button .ico{width:16px;height:16px}
+.arr-btns button[disabled]{opacity:.35;cursor:default}
+@media (max-width:360px){.arr-item .s{display:none}}

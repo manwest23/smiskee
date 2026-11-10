@@ -45,7 +45,11 @@ globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5
 type:'<path d="M4 7V5h10v2M9 5v14M7 19h4M14 12v-1h6v1M17 11v8M15.5 19h3"/>',
 send:'<path d="M21 3 3 10l7 3 3 7z"/><path d="m10 13 4-4"/>',
 search:'<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
-close:'<path d="M6 6l12 12M18 6 6 18"/>'
+close:'<path d="M6 6l12 12M18 6 6 18"/>',
+sliders:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+grip:'<circle cx="9" cy="7" r="1.3" fill="currentColor"/><circle cx="15" cy="7" r="1.3" fill="currentColor"/><circle cx="9" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="17" r="1.3" fill="currentColor"/><circle cx="15" cy="17" r="1.3" fill="currentColor"/>',
+up:'<path d="m6 15 6-6 6 6"/>',
+down:'<path d="m6 9 6 6 6-6"/>'
 };
 const I=(n,c='')=>`<svg class="ico ${c}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${P[n]}</svg>`;
 const MARK='<span class="mark"><img src="icons/logo-mark.png" alt="" width="240" height="165"></span>';
@@ -260,7 +264,7 @@ async function loadCloud(){
   if(ue||!user){st=null;return}
   const since=dkey(addDays(nowKL(),-120));
   const q=await Promise.all([
-    sb.from('profiles').select('id,full_name,staff_id,department,role,notify,lang,consent_at').eq('id',user.id).maybeSingle(),
+    sb.from('profiles').select('id,full_name,staff_id,department,role,notify,lang,consent_at,home_layout').eq('id',user.id).maybeSingle(),
     sb.from('checkins').select('day,stress,mood,tags,note').gte('day',since),
     sb.from('ledger').select('day,kind,award_key,title,sub,points,created_at').gte('day',since).order('created_at',{ascending:true}),
     sb.from('plays').select('day,game,points').gte('day',since),
@@ -292,6 +296,7 @@ async function loadCloud(){
     reminders:(rm||[]).map(r=>r.session_id),
     sessions:(ss||[]).map(s=>({id:s.id,host:s.host_name,role:s.host_title,name:s.name,startsAt:s.starts_at,live:s.live,mine:s.is_mine})),
     notify:pr.notify||{checkin:true,session:true,recap:true,coupon:true},
+    homeLayout:pr.home_layout||null,
     notifs:(nf||[]).map(mapNotif)};
 }
 
@@ -557,7 +562,7 @@ function intentions(w){
 /* ---------- routing ---------- */
 const ROUTES=['home','checkin','games','rewards','profile','recap','team','kudos'];
 const route=()=>{const h=location.hash.slice(1);return ROUTES.includes(h)?h:'home'};
-window.addEventListener('hashchange',()=>{editing=false;render();window.scrollTo(0,0);focusHeading()});
+window.addEventListener('hashchange',()=>{editing=false;render();window.scrollTo(0,0);resetNav();focusHeading()});
 function focusHeading(){const h=$('#main-heading');if(h){h.setAttribute('tabindex','-1');h.focus({preventScroll:true})}}
 
 function render(){
@@ -572,6 +577,7 @@ function render(){
   if(r==='team'&&st.user.role!=='leader'){location.hash='home';return}
   app.innerHTML={home:vHome,checkin:vCheckin,games:vGames,rewards:vRewards,profile:vProfile,recap:vRecap,team:vTeam,kudos:vKudos}[r]();
   nav.hidden=false;
+  nav.classList.toggle('away',navScroll.away);
   const cur=r==='recap'?'checkin':r==='team'||r==='kudos'?'home':r;
   const items=[['home','home',L('Home','Utama')],['checkin','pulse',L('Check-in','Daftar masuk')],['games','game',L('Games','Permainan')],['rewards','gift',L('Rewards','Ganjaran')],['profile','user',L('Profile','Profil')]];
   nav.setAttribute('aria-label',L('Main','Utama'));
@@ -586,12 +592,14 @@ function render(){
 const REFRESH_ROUTE={lb:'games',pulse:'team',kudos:'kudos'};
 async function refresh(kind){
   const fresh=Date.now()-cache[kind+'At']<60000;
-  if((fresh&&cache[kind])||cache.loading[kind])return;
+  if((fresh&&(cache[kind]||cache[kind+'Err']))||cache.loading[kind])return;
   cache.loading[kind]=true;
   try{cache[kind]=await ({lb:act.leaderboard,pulse:act.pulse,kudos:act.kudosLists}[kind])();cache[kind+'At']=Date.now();cache[kind+'Err']=null}
   catch(e){cache[kind+'Err']=friendly(e);cache[kind+'At']=Date.now()}
   finally{cache.loading[kind]=false}
-  if(!st||route()!==REFRESH_ROUTE[kind])return;
+  if(!st)return;
+  if(kind==='kudos'&&route()==='home'){render();return}
+  if(route()!==REFRESH_ROUTE[kind])return;
   if(kind==='kudos'&&$('#kudos-list')){$('#kudos-list').innerHTML=kudosListHTML();return}
   render();
 }
@@ -720,6 +728,32 @@ function toughCard(){
   </div>`;
 }
 
+/* ---------- Home cards (people can reorder and hide them) ---------- */
+const HOME_SECTIONS=[
+ {id:'checkin',icon:'pulse',name:['Daily check-in','Daftar masuk harian'],desc:["Today's stress check-in, or your result",'Daftar masuk tekanan hari ini, atau keputusan anda']},
+ {id:'note',icon:'spark',name:["Today's note",'Nota hari ini'],desc:['A daily message and quote','Mesej dan petikan harian']},
+ {id:'balance',icon:'trophy',name:['Points and level','Mata dan tahap'],desc:['Balance, level, streak and engagement','Baki, tahap, rentetan dan penglibatan']},
+ {id:'session',icon:'game',name:['Live leader round','Pusingan ketua langsung'],desc:['Appears when a leader is hosting','Muncul apabila ketua sedang mengadakan sesi']},
+ {id:'week',icon:'chart',name:['Your week','Minggu anda'],desc:['Stress this week at a glance','Tekanan minggu ini secara ringkas']},
+ {id:'actions',icon:'home',name:['Quick actions','Tindakan pantas'],desc:['Shortcuts to games, rewards and more','Pintasan ke permainan, ganjaran dan lain-lain']},
+ {id:'kudos',icon:'heart',name:['Thank-yous','Ucapan terima kasih'],desc:['Your latest thank-you, and a shortcut to send one','Ucapan terima kasih terkini, dan pintasan untuk menghantar']},
+ {id:'activity',icon:'cal',name:['Recent activity','Aktiviti terkini'],desc:['Points you earned and spent','Mata yang diperoleh dan dibelanjakan']}];
+const DEFAULT_LAYOUT=HOME_SECTIONS.map(x=>({id:x.id,on:true}));
+function homeLayout(){
+  const saved=Array.isArray(st&&st.homeLayout)?st.homeLayout:[];
+  const known=new Set(HOME_SECTIONS.map(x=>x.id));
+  const out=saved.filter(x=>x&&known.has(x.id)).map(x=>({id:x.id,on:x.on!==false}));
+  HOME_SECTIONS.forEach(x=>{if(!out.some(y=>y.id===x.id))out.push({id:x.id,on:true})});
+  return out;
+}
+let layoutSaveTimer=null;
+function saveLayout(layout){
+  st.homeLayout=layout.map(x=>({id:x.id,on:x.on}));
+  if(st.mode==='demo'){saveLocal();return}
+  clearTimeout(layoutSaveTimer);
+  layoutSaveTimer=setTimeout(async()=>{const {error}=await sb.rpc('set_home_layout',{p:st.homeLayout});if(error)toast(friendly(error))},400);
+}
+
 function vHome(){
   const now=nowKL(), h=now.getHours(), greet=h<12?L('Good morning','Selamat pagi'):h<18?L('Good afternoon','Selamat petang'):L('Good evening','Selamat malam');
   const ci=st.checkins[today()], doy=Math.floor((now-new Date(now.getFullYear(),0,0))/864e5);
@@ -728,46 +762,121 @@ function vHome(){
   const live=st.sessions.find(s=>s.live&&!sessionDone(s.id)&&!s.mine);
   const acts=[...st.activity].sort((a,b)=>b.ts-a.ts).slice(0,4);
   const lead=st.user.role==='leader';
+  const layout=homeLayout();
+  if(layout.some(x=>x.id==='kudos'&&x.on)&&st.mode==='cloud')refresh('kudos');
+  const kudosData=cache.kudos||(st.mode==='demo'?st.kudos:null);
+  const lastKudos=kudosData&&kudosData.received&&kudosData.received[0];
+  const S={
+    checkin:()=>ci?`<div class="card row between"><div><p class="eyebrow">${L("Today's check-in",'Daftar masuk hari ini')}</p><p style="font-weight:700;margin-top:2px">${L('Stress','Tekanan')} ${ci.stress}/10 · ${bandLabel(ci.stress)}</p></div><span class="chip ${band(ci.stress)}">${I('check')}${L('Done','Selesai')}</span></div>`
+      :`<div class="card stack" style="gap:12px"><div class="row between"><p class="eyebrow">${L('Daily check-in','Daftar masuk harian')}</p><span class="chip gold">+20 ${L('pts','mata')}</span></div>
+        <h2 style="font-size:1.375rem">${L('How stressed do you feel today?','Sejauh mana anda rasa tertekan hari ini?')}</h2><p class="muted small">${L('It takes 20 seconds. Only you can see your answers.','Hanya 20 saat. Hanya anda yang boleh melihat jawapan anda.')}</p>
+        <a href="#checkin" class="btn primary block" style="text-decoration:none">${L('Check in now','Daftar masuk sekarang')} ${I('chev')}</a></div>`,
+    note:()=>`<div class="card"><p class="eyebrow">${L("Today's note",'Nota hari ini')}</p><h2 style="font-size:1.375rem;margin-top:6px">${tx(note.h)}</h2><p class="muted" style="margin-top:4px">${tx(note.b)}</p>
+        <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px"><p class="quote">"${tx(q.q)}"</p><p class="small muted" style="margin-top:4px">${q.a}</p></div></div>`,
+    balance:()=>`<div class="card forest stack" style="gap:14px">
+        <div class="row between"><div><p class="small muted">${L('Available balance','Baki tersedia')}</p><p class="num" style="font-size:2.125rem;font-weight:800;letter-spacing:-.03em;line-height:1.1">${fmt(st.points)} <span style="font-size:.875rem;font-weight:600">${L('pts','mata')}</span></p></div><span class="chip gold">${I('spark')}${L('Level','Tahap')} ${level()}</span></div>
+        <div><div class="row between small"><span class="muted">${L('Next level','Tahap seterusnya')}</span><span class="num">${LEVEL_STEP-prog} ${L('pts to go','mata lagi')}</span></div><div class="track" style="margin-top:6px" role="progressbar" aria-valuemin="0" aria-valuemax="${LEVEL_STEP}" aria-valuenow="${prog}" aria-label="${L('Progress to next level','Kemajuan ke tahap seterusnya')}"><i style="width:${prog/LEVEL_STEP*100}%"></i></div></div>
+        <div class="row between small" style="border-top:1px solid rgba(255,255,255,.1);padding-top:12px"><span class="row" style="gap:8px">${I('flame')}${L('Check-in streak','Rentetan daftar masuk')}</span><b class="num">${streak()} ${L('days','hari')}</b></div>
+        <div class="row between small" style="margin-top:-6px"><span class="row" style="gap:8px">${I('cal')}${L('Weekly engagement','Penglibatan mingguan')}</span><b class="num">${engagedDays()}/5 ${L('days','hari')}</b></div></div>`,
+    session:()=>live?`<div class="card stack" style="gap:12px"><div class="row between"><p class="eyebrow">${L('Play with your leaders','Bermain bersama ketua')}</p><span class="chip high">${L('Live','Langsung')}</span></div>
+        <div class="session"><div class="host live" aria-hidden="true">${esc(initials(live.host))}</div><div style="flex:1;min-width:0"><p style="font-weight:700">${esc(live.name)}</p><p class="small muted">${L('Hosted by','Dihoskan oleh')} ${esc(live.host)} · ${L('Double points','Mata berganda')}</p></div></div>
+        <button class="btn gold block" data-act="session" data-id="${live.id}">${L('Join the round','Sertai pusingan')}</button></div>`:'',
+    week:()=>`<div class="card stack" style="gap:12px">
+        <div class="row between"><div><p class="eyebrow">${recapReady?L('Your weekly recap is ready','Ringkasan mingguan anda sudah sedia'):L('Your week so far','Minggu anda setakat ini')}</p><p style="font-weight:700;margin-top:2px">${w.avg!=null?L(`Average stress ${w.avg.toFixed(1)}/10`,`Purata tekanan ${w.avg.toFixed(1)}/10`):L('No check-ins yet','Belum ada daftar masuk')}</p></div><a class="link" href="#recap">${L('Open recap','Buka ringkasan')}</a></div>
+        ${weekDots(w)}</div>`,
+    actions:()=>`<div><h2 class="sec-title" style="margin-bottom:10px">${L('Quick actions','Tindakan pantas')}</h2>
+        <div class="qa">
+          <button data-go="games"><span class="ib">${I('game')}</span>${L('Games','Permainan')}</button>
+          <button data-go="kudos"><span class="ib">${I('heart')}</span>${L('Appreciate','Hargai')}</button>
+          <button data-go="rewards"><span class="ib">${I('gift')}</span>${L('Rewards','Ganjaran')}</button>
+          ${lead?`<button data-go="team"><span class="ib">${I('team')}</span>${L('Team pulse','Nadi pasukan')}</button>`:`<button data-go="recap"><span class="ib">${I('chart')}</span>${L('Recap','Ringkasan')}</button>`}
+        </div></div>`,
+    kudos:()=>`<div class="card stack" style="gap:12px"><div class="row between"><p class="eyebrow">${L('Thank-yous','Ucapan terima kasih')}</p><a class="link" href="#kudos">${L('See all','Lihat semua')}</a></div>
+        ${lastKudos?`<div class="session"><span class="ib kudos-ib">${I(badgeIcon(lastKudos.badge))}</span><div style="flex:1;min-width:0"><p style="font-weight:700">${esc(tBadge(lastKudos.badge))}</p><p class="small muted">${L(`From ${esc(lastKudos.from_name)}`,`Daripada ${esc(lastKudos.from_name)}`)} · ${relDay(klKey(lastKudos.created_at))}</p>${lastKudos.message?`<p class="small" style="margin-top:4px">"${esc(lastKudos.message)}"</p>`:''}</div></div>`
+          :`<p class="small muted">${L('Recognise a colleague today. They get 30 points and a badge.','Hargai rakan sekerja hari ini. Mereka dapat 30 mata dan satu lencana.')}</p>`}
+        <a href="#kudos" class="btn ghost block" style="text-decoration:none">${I('heart')}${L('Say thank you','Ucapkan terima kasih')}</a></div>`,
+    activity:()=>`<div class="card"><div class="row between" style="margin-bottom:12px"><h2 class="sec-title">${L('Recent activity','Aktiviti terkini')}</h2></div>
+        <div class="list">${acts.map(actRow).join('')||`<p class="muted small">${L('Nothing yet. Check in or play a game to start earning.','Belum ada apa-apa. Daftar masuk atau main permainan untuk mula mengumpul mata.')}</p>`}</div></div>`};
+  const body=layout.filter(x=>x.on).map(x=>S[x.id]()).filter(Boolean).join('\n');
   return `${header(greet,esc(firstName(st.user.name))+'.',`${esc(tDept(st.user.dept))}${lead?' · '+L('Team leader','Ketua pasukan'):''}`)}
   <main class="pad lift stack" id="main">
     ${toughStretch()&&!supportDismissed()?toughCard():''}
     ${st.mode==='demo'?`<div class="card flat note" style="padding:12px 14px">${I('spark')}<div>${L("You're in demo mode. Your progress is saved on this device only.",'Anda dalam mod demo. Kemajuan anda disimpan pada peranti ini sahaja.')}${sb?` <button class="link" data-act="signout">${L('Sign in with your staff ID','Log masuk dengan ID kakitangan')}</button>`:''}</div></div>`:''}
-    ${ci?`<div class="card row between"><div><p class="eyebrow">${L("Today's check-in",'Daftar masuk hari ini')}</p><p style="font-weight:700;margin-top:2px">${L('Stress','Tekanan')} ${ci.stress}/10 · ${bandLabel(ci.stress)}</p></div><span class="chip ${band(ci.stress)}">${I('check')}${L('Done','Selesai')}</span></div>`
-    :`<div class="card stack" style="gap:12px"><div class="row between"><p class="eyebrow">${L('Daily check-in','Daftar masuk harian')}</p><span class="chip gold">+20 ${L('pts','mata')}</span></div>
-      <h2 style="font-size:1.375rem">${L('How stressed do you feel today?','Sejauh mana anda rasa tertekan hari ini?')}</h2><p class="muted small">${L('It takes 20 seconds. Only you can see your answers.','Hanya 20 saat. Hanya anda yang boleh melihat jawapan anda.')}</p>
-      <a href="#checkin" class="btn primary block" style="text-decoration:none">${L('Check in now','Daftar masuk sekarang')} ${I('chev')}</a></div>`}
-
-    <div class="card"><p class="eyebrow">${L("Today's note",'Nota hari ini')}</p><h2 style="font-size:1.375rem;margin-top:6px">${tx(note.h)}</h2><p class="muted" style="margin-top:4px">${tx(note.b)}</p>
-      <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px"><p class="quote">"${tx(q.q)}"</p><p class="small muted" style="margin-top:4px">${q.a}</p></div></div>
-
-    <div class="card forest stack" style="gap:14px">
-      <div class="row between"><div><p class="small muted">${L('Available balance','Baki tersedia')}</p><p class="num" style="font-size:2.125rem;font-weight:800;letter-spacing:-.03em;line-height:1.1">${fmt(st.points)} <span style="font-size:.875rem;font-weight:600">${L('pts','mata')}</span></p></div><span class="chip gold">${I('spark')}${L('Level','Tahap')} ${level()}</span></div>
-      <div><div class="row between small"><span class="muted">${L('Next level','Tahap seterusnya')}</span><span class="num">${LEVEL_STEP-prog} ${L('pts to go','mata lagi')}</span></div><div class="track" style="margin-top:6px" role="progressbar" aria-valuemin="0" aria-valuemax="${LEVEL_STEP}" aria-valuenow="${prog}" aria-label="${L('Progress to next level','Kemajuan ke tahap seterusnya')}"><i style="width:${prog/LEVEL_STEP*100}%"></i></div></div>
-      <div class="row between small" style="border-top:1px solid rgba(255,255,255,.1);padding-top:12px"><span class="row" style="gap:8px">${I('flame')}${L('Check-in streak','Rentetan daftar masuk')}</span><b class="num">${streak()} ${L('days','hari')}</b></div>
-      <div class="row between small" style="margin-top:-6px"><span class="row" style="gap:8px">${I('cal')}${L('Weekly engagement','Penglibatan mingguan')}</span><b class="num">${engagedDays()}/5 ${L('days','hari')}</b></div>
-    </div>
-
-    ${live?`<div class="card stack" style="gap:12px"><div class="row between"><p class="eyebrow">${L('Play with your leaders','Bermain bersama ketua')}</p><span class="chip high">${L('Live','Langsung')}</span></div>
-      <div class="session"><div class="host live" aria-hidden="true">${esc(initials(live.host))}</div><div style="flex:1;min-width:0"><p style="font-weight:700">${esc(live.name)}</p><p class="small muted">${L('Hosted by','Dihoskan oleh')} ${esc(live.host)} · ${L('Double points','Mata berganda')}</p></div></div>
-      <button class="btn gold block" data-act="session" data-id="${live.id}">${L('Join the round','Sertai pusingan')}</button></div>`:''}
-
-    <div class="card stack" style="gap:12px">
-      <div class="row between"><div><p class="eyebrow">${recapReady?L('Your weekly recap is ready','Ringkasan mingguan anda sudah sedia'):L('Your week so far','Minggu anda setakat ini')}</p><p style="font-weight:700;margin-top:2px">${w.avg!=null?L(`Average stress ${w.avg.toFixed(1)}/10`,`Purata tekanan ${w.avg.toFixed(1)}/10`):L('No check-ins yet','Belum ada daftar masuk')}</p></div><a class="link" href="#recap">${L('Open recap','Buka ringkasan')}</a></div>
-      ${weekDots(w)}
-    </div>
-
-    <div><h2 class="sec-title" style="margin-bottom:10px">${L('Quick actions','Tindakan pantas')}</h2>
-      <div class="qa">
-        <button data-go="games"><span class="ib">${I('game')}</span>${L('Games','Permainan')}</button>
-        <button data-go="kudos"><span class="ib">${I('heart')}</span>${L('Appreciate','Hargai')}</button>
-        <button data-go="rewards"><span class="ib">${I('gift')}</span>${L('Rewards','Ganjaran')}</button>
-        ${lead?`<button data-go="team"><span class="ib">${I('team')}</span>${L('Team pulse','Nadi pasukan')}</button>`:`<button data-go="recap"><span class="ib">${I('chart')}</span>${L('Recap','Ringkasan')}</button>`}
-      </div></div>
-
-    <div class="card"><div class="row between" style="margin-bottom:12px"><h2 class="sec-title">${L('Recent activity','Aktiviti terkini')}</h2></div>
-      <div class="list">${acts.map(actRow).join('')||`<p class="muted small">${L('Nothing yet. Check in or play a game to start earning.','Belum ada apa-apa. Daftar masuk atau main permainan untuk mula mengumpul mata.')}</p>`}</div></div>
+    ${body||`<div class="card flat"><p class="muted">${L('All Home cards are switched off.','Semua kad Utama dimatikan.')}</p></div>`}
+    <button class="btn ghost block customize-btn" data-act="customize">${I('sliders')}${L('Customize Home','Ubah suai Utama')}</button>
   </main>`;
 }
+
+/* ---------- Customize Home sheet ---------- */
+let arrange=null;
+function customizeSheet(){
+  arrange=homeLayout();
+  G={id:'customize'};openSheet(L('Customize Home','Ubah suai Utama'));drawArrange();
+}
+function drawArrange(){
+  const info=id=>HOME_SECTIONS.find(x=>x.id===id);
+  SB(`<div class="stack" style="gap:14px">
+    <p class="small muted">${L('Drag the handle or use the arrows to change the order. Switch off cards you don\'t need.','Seret pemegang atau gunakan anak panah untuk menukar susunan. Matikan kad yang anda tidak perlukan.')}</p>
+    <ul class="arrange" id="arrange" aria-label="${L('Home cards','Kad Utama')}">${arrange.map((x,i)=>{const s=info(x.id);return `<li class="arr-item ${x.on?'':'off'}" data-id="${x.id}">
+      <button type="button" class="handle" data-drag aria-label="${L('Drag to reorder','Seret untuk menyusun')} ${esc(tx(s.name))}">${I('grip')}</button>
+      <span class="ib">${I(s.icon)}</span>
+      <span class="grow"><span class="t">${tx(s.name)}</span><span class="s">${tx(s.desc)}</span></span>
+      <span class="arr-btns"><button type="button" data-act="arr-up" data-id="${x.id}" aria-label="${L('Move up','Naikkan')}: ${esc(tx(s.name))}" ${i===0?'disabled':''}>${I('up')}</button><button type="button" data-act="arr-down" data-id="${x.id}" aria-label="${L('Move down','Turunkan')}: ${esc(tx(s.name))}" ${i===arrange.length-1?'disabled':''}>${I('down')}</button></span>
+      <button type="button" class="switch" role="switch" aria-checked="${x.on}" aria-label="${L('Show','Tunjuk')} ${esc(tx(s.name))}" data-act="arr-toggle" data-id="${x.id}"><span></span></button>
+    </li>`}).join('')}</ul>
+    <div class="row" style="gap:10px"><button class="btn ghost" style="flex:1" data-act="arr-reset">${L('Reset to default','Set semula')}</button><button class="btn primary" style="flex:1" data-act="close">${L('Done','Selesai')}</button></div>
+  </div>`);
+}
+/* Re-draw the list and slide each card from its old place to its new one. */
+function animateArrange(change,focusSel){
+  const before=new Map([...document.querySelectorAll('#arrange .arr-item')].map(li=>[li.dataset.id,li.getBoundingClientRect().top]));
+  change();saveLayout(arrange);drawArrange();
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('#arrange .arr-item').forEach(li=>{
+    const old=before.get(li.dataset.id);if(old==null||reduce)return;
+    const d=old-li.getBoundingClientRect().top;if(!d)return;
+    li.style.transition='none';li.style.transform=`translate3d(0,${d}px,0)`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{li.style.transition='transform .32s cubic-bezier(.22,.9,.24,1)';li.style.transform=''}));
+  });
+  if(focusSel){const f=document.querySelector(focusSel);if(f&&!f.disabled)f.focus();else{const li=f&&f.closest('.arr-item');const other=li&&li.querySelector('.arr-btns button:not([disabled])');other&&other.focus()}}
+}
+function moveSection(id,dir){
+  const i=arrange.findIndex(x=>x.id===id),j=i+dir;
+  if(i<0||j<0||j>=arrange.length)return;
+  animateArrange(()=>{const [x]=arrange.splice(i,1);arrange.splice(j,0,x)},`[data-act=${dir<0?'arr-up':'arr-down'}][data-id="${id}"]`);
+  toast(L(`Moved to position ${j+1}`,`Dipindahkan ke kedudukan ${j+1}`));
+}
+/* Drag with a finger or mouse: the card follows the pointer, the others slide out of the way. */
+function startDrag(e,li){
+  const list=li.parentElement;
+  e.preventDefault();
+  const startY=e.clientY, startOT=li.offsetTop;
+  li.classList.add('dragging');
+  try{e.target.setPointerCapture(e.pointerId)}catch(_){}
+  const slide=(el,from)=>{const d=from-el.getBoundingClientRect().top;if(!d)return;el.style.transition='none';el.style.transform=`translate3d(0,${d}px,0)`;
+    requestAnimationFrame(()=>{el.style.transition='transform .22s cubic-bezier(.22,.9,.24,1)';el.style.transform=''})};
+  const move=ev=>{
+    const y=ev.clientY;
+    const sibs=[...list.children].filter(x=>x!==li);
+    let before=null;
+    for(const s of sibs){const r=s.getBoundingClientRect();if(y<r.top+r.height/2){before=s;break}}
+    const already=before?li.nextElementSibling===before:list.lastElementChild===li;
+    if(!already){const tops=new Map(sibs.map(s=>[s,s.getBoundingClientRect().top]));list.insertBefore(li,before);sibs.forEach(s=>slide(s,tops.get(s)))}
+    li.style.transition='none';
+    li.style.transform=`translate3d(0,${(y-startY)-(li.offsetTop-startOT)}px,0) scale(1.02)`;
+  };
+  const end=()=>{
+    window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end);
+    li.style.transition='transform .26s cubic-bezier(.22,.9,.24,1)';li.style.transform='';li.classList.remove('dragging');
+    const order=[...list.children].map(x=>x.dataset.id);
+    const changed=order.join()!==arrange.map(x=>x.id).join();
+    arrange=order.map(id=>arrange.find(x=>x.id===id));
+    if(changed){saveLayout(arrange);setTimeout(()=>{if(G&&G.id==='customize')drawArrange()},280)}
+  };
+  window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);window.addEventListener('pointercancel',end);
+}
+document.addEventListener('pointerdown',e=>{const h=e.target.closest('[data-drag]');if(!h)return;const li=h.closest('.arr-item');if(li)startDrag(e,li)});
+
 function relDay(k){const d=pdate(k);return k===today()?L('Today','Hari ini'):k===dkey(addDays(nowKL(),-1))?L('Yesterday','Semalam'):`${dayShort(d.getDay())}, ${d.getDate()} ${mon(d.getMonth())}`}
 function actRow(a){
   const ic=a.pts<0?'gift':/^Recognised by|^Sent a thank-you/.test(a.title)?'heart':a.pts===0?'trophy':/check-in/i.test(a.title)?'pulse':'game';
@@ -1013,6 +1122,7 @@ function vProfile(){
     </div></div>
     ${notifSettings()}
     <div class="card stack" style="gap:14px"><div><p class="eyebrow">${L('Language and display','Bahasa dan paparan')}</p></div>
+      <button type="button" class="li row-btn" data-act="customize" style="border-top:none;padding-top:0"><span class="ib">${I('sliders')}</span><span class="grow"><span class="t">${L('Customize Home','Ubah suai Utama')}</span><span class="s">${L('Choose which cards you see first, and hide the rest','Pilih kad yang anda lihat dahulu, dan sembunyikan yang lain')}</span></span>${I('chev')}</button>
       <div role="group" aria-labelledby="lang-lbl"><p class="f" id="lang-lbl">${I('globe','sm')} ${L('Language','Bahasa')}</p>
         <div class="seg"><button data-act="set-lang" data-v="en" lang="en" aria-pressed="${LANG==='en'}">English</button><button data-act="set-lang" data-v="ms" lang="ms" aria-pressed="${LANG==='ms'}">Bahasa Malaysia</button></div></div>
       <div role="group" aria-labelledby="text-lbl"><p class="f" id="text-lbl">${I('type','sm')} ${L('Text size','Saiz teks')}</p>
@@ -1204,6 +1314,30 @@ async function pushAction(fn,okMsg,where){
   try{const r=await fn();if(r!==false&&okMsg)toast(okMsg)}catch(e){toast(friendly(e))}
   if(where==='sheet'&&G&&G.id==='notifs')drawNotifs();else if(route()==='profile')render();
 }
+
+
+/* ---------- bottom menu: hide on scroll down, show on scroll up ---------- */
+const navScroll={last:0,acc:0,away:false,ticking:false};
+function setNavAway(away){
+  if(navScroll.away===away)return;navScroll.away=away;
+  const nav=$('#nav');if(nav)nav.classList.toggle('away',away);
+  document.body.classList.toggle('nav-away',away);
+}
+function onScrollFrame(){
+  navScroll.ticking=false;
+  const nav=$('#nav');
+  const y=Math.max(0,window.scrollY);
+  const d=y-navScroll.last;navScroll.last=y;
+  if(!nav||nav.hidden||!$('#sheet').hidden){return}
+  const max=document.documentElement.scrollHeight-window.innerHeight;
+  if(y<72||y>=max-8){navScroll.acc=0;setNavAway(false);return}   // near the top or the very bottom: always show
+  if((d>0)!==(navScroll.acc>0))navScroll.acc=0;                   // direction changed: start counting again
+  navScroll.acc+=d;
+  if(navScroll.acc>14)setNavAway(true);                            // a deliberate scroll down
+  else if(navScroll.acc<-10)setNavAway(false);                     // any real scroll up
+}
+window.addEventListener('scroll',()=>{if(!navScroll.ticking){navScroll.ticking=true;requestAnimationFrame(onScrollFrame)}},{passive:true});
+function resetNav(){navScroll.last=Math.max(0,window.scrollY);navScroll.acc=0;setNavAway(false)}
 
 /* ---------- sheet (accessible dialog) + games ---------- */
 let lastFocus=null;
@@ -1478,6 +1612,11 @@ document.addEventListener('click',e=>{
     case 'copy':copyCode(el.dataset.code);break;
     case 'install':installSheet();break;
     case 'notifs':notifSheet();break;
+    case 'customize':customizeSheet();break;
+    case 'arr-up':moveSection(el.dataset.id,-1);break;
+    case 'arr-down':moveSection(el.dataset.id,1);break;
+    case 'arr-toggle':{const x=arrange.find(y=>y.id===el.dataset.id);x.on=!x.on;el.setAttribute('aria-checked',x.on);el.closest('.arr-item').classList.toggle('off',!x.on);saveLayout(arrange);break}
+    case 'arr-reset':animateArrange(()=>{arrange=DEFAULT_LAYOUT.map(x=>({...x}))});toast(L('Home reset to the default layout','Utama diset semula ke susunan asal'));break;
     case 'open-notif':{const u=el.dataset.url||'#home';closeSheet();location.hash=u.replace(/^#?/,'#');break}
     case 'push-on':pushAction(enablePush,L('Phone notifications are on','Pemberitahuan telefon dihidupkan'),el.dataset.where);break;
     case 'push-off':pushAction(disablePush,L('Phone notifications turned off for this device','Pemberitahuan telefon dimatikan untuk peranti ini'),el.dataset.where);break;
