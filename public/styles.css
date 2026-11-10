@@ -276,10 +276,17 @@ html.lock,html.lock body{height:100%;overflow:hidden;overscroll-behavior:none}
 .loading{min-height:100vh;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;color:var(--muted);font-weight:600}
 .loading .mark{width:52px;height:52px;border-radius:14px;background:#000}
 .loading .mark svg{width:30px;height:30px}
-.login .auth-tabs button{padding:clamp(6px,1vh,10px)}
 .login input[type=password]{border-radius:14px;padding:clamp(9px,1.6vh,16px) 16px;font-size:16px;border:1.5px solid var(--line);background:var(--surface);width:100%}
 .login input[type=password]:focus{border-color:var(--forest-2);outline:none}
 .login .err{margin-top:4px}
 @media (max-height:760px){.login.compact .login-sub{display:none}}
 @media (max-height:680px){.login.compact .login-eyebrow{display:none}.login.compact .login-title{margin-top:clamp(10px,2vh,20px);font-size:min(10vw,5vh,44px)}}
 .btn[disabled]{cursor:progress}
+
+.back-link{align-self:flex-start;margin-top:clamp(10px,2.4vh,28px);font-size:14px;font-weight:700;color:var(--forest-2);text-decoration:none}
+.login-eyebrow.tight{margin-top:clamp(8px,2vh,24px)}
+.switch-auth{text-align:center;font-size:14px;color:var(--muted);margin:0}
+.switch-auth a{color:var(--forest-2);font-weight:700;text-underline-offset:3px}
+@media (max-height:700px){.login.compact .login-sub{display:none}}
+@media (max-height:620px){.login.compact .login-eyebrow{display:none}}
+.login .login-demo{color:var(--muted);font-weight:600;font-size:13px}

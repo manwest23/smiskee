@@ -360,7 +360,7 @@ window.addEventListener('hashchange',()=>{editing=false;render();window.scrollTo
 function render(){
   const app=$('#app'), nav=$('#nav');
   document.documentElement.classList.toggle('lock',!st);app.classList.toggle('login-mode',!st);
-  if(!st){nav.hidden=true;app.innerHTML=vLogin();window.scrollTo(0,0);return}
+  if(!st){const m=location.hash==='#signup'?'signup':'signin';if(m!==authMode){authMode=m;loginErr={}}nav.hidden=true;app.innerHTML=vLogin();window.scrollTo(0,0);if(sb){const f=$(authMode==='signup'?'#l-name':'#l-id');f&&!('ontouchstart' in window)&&f.focus()}return}
   const r=route();
   if(r==='team'&&st.user.role!=='leader'){location.hash='home';return}
   app.innerHTML={home:vHome,checkin:vCheckin,games:vGames,rewards:vRewards,profile:vProfile,recap:vRecap,team:vTeam}[r]();
@@ -386,30 +386,54 @@ async function refresh(kind){
 /* ---------- views ---------- */
 function vLogin(){
   const cloud=!!sb, signup=cloud&&authMode==='signup';
-  const nameF=`<div><label class="f" for="l-name">Employee name</label><input type="text" id="l-name" autocomplete="name" placeholder="Enter your full name">${loginErr.name?`<p class="err">${loginErr.name}</p>`:''}</div>`;
+  const err=k=>loginErr[k]?`<p class="err">${esc(loginErr[k])}</p>`:'';
+  const nameF=`<div><label class="f" for="l-name">Employee name</label><input type="text" id="l-name" autocomplete="name" placeholder="Enter your full name">${err('name')}</div>`;
   const idDept=`<div class="duo">
         <div><label class="f" for="l-id">Staff ID</label><input type="text" id="l-id" autocomplete="username" autocapitalize="characters" placeholder="e.g. MY-1842"></div>
         <div><label class="f" for="l-dept">Department</label><select id="l-dept">${DEPTS.map(d=>`<option ${d==='Digital Banking'?'selected':''}>${d}</option>`).join('')}</select></div>
-      </div>${loginErr.id?`<p class="err" style="margin-top:-4px">${loginErr.id}</p>`:''}`;
+      </div>${err('id')}`;
   const roleF=`<div><span class="lbl">I am signing in as</span>
         <div class="seg"><button type="button" data-act="lrole" data-v="employee" aria-pressed="${loginRole==='employee'}">Employee</button><button type="button" data-act="lrole" data-v="leader" aria-pressed="${loginRole==='leader'}">Team leader</button></div></div>`;
-  const pwF=`<div><label class="f" for="l-pw">Password</label><input type="password" id="l-pw" autocomplete="${signup?'new-password':'current-password'}" placeholder="${signup?'At least 8 characters':'Your password'}">${loginErr.pw?`<p class="err">${loginErr.pw}</p>`:''}</div>`;
-  let fields;
-  if(!cloud) fields=nameF+idDept+roleF;
-  else if(signup) fields=nameF+idDept+pwF+roleF;
-  else fields=`<div><label class="f" for="l-id">Staff ID</label><input type="text" id="l-id" autocomplete="username" autocapitalize="characters" placeholder="e.g. MY-1842">${loginErr.id?`<p class="err">${loginErr.id}</p>`:''}</div>`+pwF;
-  return `<section class="login pad ${signup?'compact':''}">
-    <div class="row between"><div class="brand login-brand">${MARK}SMISKEE</div>${installBtn()}</div>
+  const brand=`<div class="row between"><div class="brand login-brand">${MARK}SMISKEE</div>${installBtn()}</div>`;
+  const foot=`<p class="note foot-note">${I('lock','sm')}Your access is protected by your organisation.</p>`;
+  const demo=`<button class="btn block login-demo" type="button" data-act="demo">Try with a sample employee</button>`;
+
+  if(signup) return `<section class="login pad compact">
+    ${brand}
+    <a href="#" class="back-link">‹ Back to sign in</a>
+    <p class="eyebrow login-eyebrow tight">Join SMISKEE</p>
+    <h1 class="login-title">Create your account.</h1>
+    <p class="login-sub">Use the staff ID on your card. It takes a minute.</p>
+    <form id="login" class="stack" novalidate>
+      ${nameF}${idDept}
+      <div class="duo">
+        <div><label class="f" for="l-pw">Password</label><input type="password" id="l-pw" autocomplete="new-password" placeholder="8+ characters"></div>
+        <div><label class="f" for="l-pw2">Confirm</label><input type="password" id="l-pw2" autocomplete="new-password" placeholder="Type it again"></div>
+      </div>${err('pw')}
+      ${roleF}
+      ${err('form')}
+      <button class="btn primary block login-btn" type="submit" id="login-btn">Create account ${I('chev')}</button>
+      <p class="switch-auth">Already have an account? <a href="#">Sign in</a></p>
+      ${foot}
+    </form>
+  </section>`;
+
+  const fields=cloud
+    ?`<div><label class="f" for="l-id">Staff ID</label><input type="text" id="l-id" autocomplete="username" autocapitalize="characters" placeholder="e.g. MY-1842">${err('id')}</div>
+      <div><label class="f" for="l-pw">Password</label><input type="password" id="l-pw" autocomplete="current-password" placeholder="Your password">${err('pw')}</div>`
+    :nameF+idDept+roleF;
+  return `<section class="login pad">
+    ${brand}
     <p class="eyebrow login-eyebrow">Next generation motivation</p>
     <h1 class="login-title">Welcome to SMISKEE.</h1>
     <p class="login-sub">A better workday starts with a little motivation.</p>
     <form id="login" class="stack" novalidate>
-      ${cloud?`<div class="seg auth-tabs"><button type="button" data-act="authmode" data-v="signin" aria-pressed="${!signup}">Sign in</button><button type="button" data-act="authmode" data-v="signup" aria-pressed="${signup}">Create account</button></div>`:''}
       ${fields}
-      ${loginErr.form?`<p class="err">${esc(loginErr.form)}</p>`:''}
-      <button class="btn primary block login-btn" type="submit" id="login-btn">${signup?'Create account':'Continue securely'} ${I('chev')}</button>
-      <button class="btn block login-demo" type="button" data-act="demo">Try with a sample employee</button>
-      <p class="note foot-note">${I('lock','sm')}Your access is protected by your organisation.</p>
+      ${err('form')}
+      <button class="btn primary block login-btn" type="submit" id="login-btn">Continue securely ${I('chev')}</button>
+      ${cloud?`<p class="switch-auth">New to SMISKEE? <a href="#signup">Create an account</a></p>`:''}
+      ${demo}
+      ${foot}
     </form>
   </section>`;
 }
@@ -812,7 +836,7 @@ async function confirmRedeem(){
 
 /* ---------- sign in ---------- */
 function keepLogin(fn){
-  const vals={};['l-name','l-id','l-dept','l-pw'].forEach(id=>{const el=$('#'+id);if(el)vals[id]=el.value});
+  const vals={};['l-name','l-id','l-dept'].forEach(id=>{const el=$('#'+id);if(el)vals[id]=el.value});
   fn();render();Object.entries(vals).forEach(([id,v])=>{const el=$('#'+id);if(el)el.value=v});
 }
 async function submitLogin(){
@@ -822,6 +846,7 @@ async function submitLogin(){
   if(!signin&&name.length<2)err.name='Enter your full name.';
   if(!validStaff(id))err.id='Use the format on your staff card, for example MY-1842.';
   if(sb&&signup&&pw.length<8)err.pw='Use at least 8 characters.';
+  else if(sb&&signup&&pw!==($('#l-pw2')?.value||''))err.pw='The two passwords don\'t match.';
   if(sb&&signin&&!pw)err.pw='Enter your password.';
   if(Object.keys(err).length){keepLogin(()=>loginErr=err);return}
   if(!sb){st=seed(name,id,dept,loginRole);saveLocal();loginErr={};location.hash='home';render();toast(`Welcome, ${firstName(name)}`);return}
@@ -841,6 +866,7 @@ async function submitLogin(){
     let m=friendly(e);
     if(/Invalid login credentials/i.test(m))m='Staff ID or password is incorrect.';
     if(/already registered|already exists/i.test(m))m='This staff ID already has an account. Sign in instead.';
+    if(/rate limit/i.test(m))m='Too many attempts. Please wait a minute and try again.';
     if(/Database error saving new user/i.test(m))m='This staff ID is already registered. Sign in instead, or check the ID.';
     keepLogin(()=>loginErr={form:m});
   }
@@ -853,7 +879,6 @@ document.addEventListener('click',e=>{
   const a=el.dataset.act, v=el.dataset.v;
   switch(a){
     case 'lrole':loginRole=v;document.querySelectorAll('[data-act=lrole]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));break;
-    case 'authmode':keepLogin(()=>{authMode=v;loginErr={}});break;
     case 'demo':st=seed('Irfan Hakim','MY-1842','Digital Banking',loginRole);saveLocal();location.hash='home';render();toast('Signed in as a sample employee');break;
     case 'mood':draft.mood=draft.mood===v?null:v;document.querySelectorAll('.mood').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===draft.mood));break;
     case 'tag':{const i=draft.tags.indexOf(v);i>-1?draft.tags.splice(i,1):draft.tags.push(v);el.setAttribute('aria-pressed',draft.tags.includes(v));break}
@@ -884,7 +909,7 @@ document.addEventListener('click',e=>{
     case 'intent':run(()=>act.intent(el.dataset.wk,+el.dataset.i),r=>r.on?(r.points?`+${r.points} pts · intention saved`:'Intention saved'):'Intention removed').then(render);break;
     case 'role':st.user.role=v;cache.pulse=null;cache.pulseAt=0;saveLocal();render();toast(v==='leader'?'Leader view on: Team pulse added to Home':'Employee view on');break;
     case 'reset':if(!resetArm){resetArm=true;render();setTimeout(()=>{resetArm=false;if(st&&route()==='profile')render()},4000)}else{resetArm=false;const u=st.user;st=seed(u.name,u.staffId,u.dept,u.role);saveLocal();render();toast('Demo data reset')}break;
-    case 'signout':act.signOut().then(()=>{draft=null;authMode='signin';loginErr={};history.replaceState(null,'',location.pathname);render()});break;
+    case 'signout':act.signOut().then(()=>{draft=null;authMode='signin';loginErr={};history.replaceState(null,'',location.pathname);authMode='signin';render()});break;
   }
 });
 document.addEventListener('submit',e=>{
