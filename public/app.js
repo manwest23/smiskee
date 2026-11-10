@@ -30,7 +30,7 @@ dots:'<circle cx="12" cy="5" r="1.4" fill="currentColor"/><circle cx="12" cy="12
 plusbox:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8.5v7M8.5 12h7"/>'
 };
 const I=(n,c='')=>`<svg class="ico ${c}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
-const MARK='<span class="mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="2" fill="#f1f6f3"/><path d="M6 12.5h12a6 6 0 0 1-12 0z" fill="none" stroke="#f1f6f3" stroke-width="1.8" stroke-linejoin="round"/></svg></span>';
+const MARK='<span class="mark"><img src="icons/logo-mark.png" alt="" width="240" height="165"></span>';
 
 /* ---------- utilities ---------- */
 const $=s=>document.querySelector(s);
@@ -936,7 +936,7 @@ async function boot(){
   if(sb){
     try{
       const {data}=await sb.auth.getSession();
-      if(data.session){$('#app').innerHTML='<div class="loading">'+MARK+'<p>Loading SMISKEE…</p></div>';await loadCloud()}
+      if(data.session){$('#app').innerHTML='<div class="loading"><span class="splash"><img src="icons/logo-full.png" alt="SMISKEE"></span><p>Loading…</p></div>';await loadCloud()}
     }catch(e){st=null;toast(friendly(e))}
     sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&st&&st.mode==='cloud'){st=null;render()}});
   }

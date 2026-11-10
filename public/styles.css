@@ -290,3 +290,9 @@ html.lock,html.lock body{height:100%;overflow:hidden;overscroll-behavior:none}
 @media (max-height:700px){.login.compact .login-sub{display:none}}
 @media (max-height:620px){.login.compact .login-eyebrow{display:none}}
 .login .login-demo{color:var(--muted);font-weight:600;font-size:13px}
+
+/* logo: the SMISKEE mark on a black tile */
+.mark{background:#000}
+.mark img{width:72%;height:auto;display:block}
+.splash{width:120px;height:120px;border-radius:28px;background:#000;display:grid;place-items:center}
+.splash img{width:64%;height:auto}
