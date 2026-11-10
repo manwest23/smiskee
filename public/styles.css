@@ -434,3 +434,41 @@ body.nav-away .toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .arr-btns button .ico{width:16px;height:16px}
 .arr-btns button[disabled]{opacity:.35;cursor:default}
 @media (max-width:360px){.arr-item .s{display:none}}
+
+/* ---------- Apple-style sign-in, create account and reset pages ---------- */
+.login{background:#fff;padding-top:calc(6px + env(safe-area-inset-top,0px))}
+.login::before{display:none}
+.login-top{display:flex;align-items:center;justify-content:space-between;min-height:44px}
+.login-top .back-link{margin:0;align-self:center;display:inline-flex;align-items:center;min-height:44px;font-weight:500;font-size:1.0625rem}
+.login .lang-btn,.login .install.icon{border:none;background:none;color:var(--forest-2);font-weight:600}
+.login .lang-btn{font-size:.9375rem;padding:0 8px}
+.login-head{text-align:center;margin-top:clamp(6px,5vh,56px)}
+.login.compact .login-head{margin-top:clamp(0px,1vh,12px)}
+.app-icon{width:clamp(56px,10vh,76px);height:auto;aspect-ratio:1;border-radius:22.5%;box-shadow:0 6px 18px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.08);display:block;margin:0 auto clamp(10px,2.2vh,20px)}
+.login .login-title{font-size:clamp(1.5rem,4.2vh,2rem)!important;font-weight:700;letter-spacing:-.022em;line-height:1.15;margin:0!important;color:var(--ink)}
+.login .login-sub{display:block!important;font-size:1rem;margin-top:6px;color:var(--muted);line-height:1.4}
+.login form{margin-top:clamp(14px,3vh,32px);gap:clamp(8px,1.6vh,14px)!important}
+.fgroup{border:1px solid var(--field-border);border-radius:14px;background:#fff}
+.frow{display:flex;align-items:stretch;gap:12px;min-height:clamp(42px,6.2vh,52px);padding:0 16px}
+.frow+.frow{border-top:1px solid #d5d9d4}
+.frow:first-child{border-radius:13px 13px 0 0}.frow:last-child{border-radius:0 0 13px 13px}.frow:only-child{border-radius:13px}
+.frow:focus-within{box-shadow:inset 0 0 0 2px var(--focus)}
+.login .frow label{flex:0 0 36%;display:flex;align-items:center;font-size:.9375rem;font-weight:500;color:var(--ink);margin:0;line-height:1.2}
+.login .fgroup .frow input,.login .fgroup .frow select{flex:1;min-width:0;width:auto;border:none;background:none;border-radius:0;padding:0;font-size:1.0625rem;outline:none;box-shadow:none}
+.login .fgroup .frow select{margin-left:-4px;text-overflow:ellipsis}
+.login input::placeholder{font-weight:400}
+.login .login-btn{min-height:50px;border-radius:14px;font-size:1.0625rem;font-weight:600;box-shadow:none;padding:10px 12px}
+.login .lbl{font-size:.8125rem;font-weight:500;color:var(--muted);padding-left:16px;margin-bottom:6px}
+.login .seg{background:#ecedeb;border:none;border-radius:10px;padding:2px;gap:0}
+.login .seg button{border-radius:8px;font-weight:500;color:var(--ink);padding:6px}
+.login .seg button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.06)}
+.login-links{display:flex;justify-content:center;flex-wrap:wrap;gap:0 22px}
+.login-links a,.login .switch-auth a{color:var(--forest-2);font-weight:500;font-size:.9375rem;text-decoration:none;margin:0}
+.login-links a{display:inline-flex;align-items:center;min-height:44px}
+.login .login-demo{color:var(--forest-2);font-weight:500;font-size:.9375rem;text-decoration:none;min-height:44px;padding:0}
+.login .foot-note{display:block;text-align:center;font-size:.75rem;line-height:1.4;color:var(--muted);margin-top:auto;padding-top:8px}
+.login .foot-note .inline-link{font-weight:500}
+.login .err{padding-left:16px;margin-top:0}
+.signup-form .consent{padding:0 4px}
+@media (max-height:640px){.login.compact .login-sub{display:none!important}.login .app-icon{width:52px;margin-bottom:8px}}
+@media (max-height:560px){.login:not(.compact) .login-sub{display:none!important}}

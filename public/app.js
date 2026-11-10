@@ -609,81 +609,72 @@ function langBtn(){return `<button class="lang-btn" data-act="lang" data-v="${LA
 function vLogin(){
   const cloud=!!sb, signup=cloud&&authMode==='signup', reset=cloud&&authMode==='reset';
   const err=k=>loginErr[k]?`<p class="err" role="alert">${esc(loginErr[k])}</p>`:'';
-  const nameF=`<div><label class="f" for="l-name">${L('Employee name','Nama pekerja')}</label><input type="text" id="l-name" autocomplete="name" placeholder="${L('Enter your full name','Masukkan nama penuh anda')}">${err('name')}</div>`;
-  const idDept=`<div class="duo">
-        <div><label class="f" for="l-id">${L('Staff ID','ID kakitangan')}</label><input type="text" id="l-id" autocomplete="username" autocapitalize="characters" placeholder="${L('e.g. MY-1842','cth. MY-1842')}"></div>
-        <div><label class="f" for="l-dept">${L('Department','Jabatan')}</label><select id="l-dept">${DEPTS.map(d=>`<option value="${esc(d)}" ${d==='Digital Banking'?'selected':''}>${esc(tDept(d))}</option>`).join('')}</select></div>
-      </div>${err('id')}`;
+  const row=(id,label,control)=>`<div class="frow"><label for="${id}">${label}</label>${control}</div>`;
+  const nameR=row('l-name',L('Name','Nama'),`<input type="text" id="l-name" autocomplete="name" placeholder="${L('Full name','Nama penuh')}">`);
+  const idR=row('l-id',L('Staff ID','ID kakitangan'),`<input type="text" id="l-id" autocomplete="username" autocapitalize="characters" placeholder="MY-1842">`);
+  const deptR=row('l-dept',L('Department','Jabatan'),`<select id="l-dept">${DEPTS.map(d=>`<option value="${esc(d)}" ${d==='Digital Banking'?'selected':''}>${esc(tDept(d))}</option>`).join('')}</select>`);
   const roleF=`<div role="group" aria-labelledby="role-lbl"><span class="lbl" id="role-lbl">${L('I am signing in as','Saya log masuk sebagai')}</span>
         <div class="seg"><button type="button" data-act="lrole" data-v="employee" aria-pressed="${loginRole==='employee'}">${L('Employee','Pekerja')}</button><button type="button" data-act="lrole" data-v="leader" aria-pressed="${loginRole==='leader'}">${L('Team leader','Ketua pasukan')}</button></div></div>`;
-  const brand=`<div class="row between"><div class="brand login-brand">${MARK}SMISKEE</div><div class="top-actions">${langBtn()}${installBtn(true)}</div></div>`;
-  const foot=`<p class="note foot-note">${I('lock','sm')}<span>${L('Your access is protected by your organisation.','Akses anda dilindungi oleh organisasi anda.')} <button type="button" class="inline-link" data-act="privacy">${L('Privacy notice','Notis privasi')}</button></span></p>`;
+  const top=back=>`<div class="login-top">${back?`<a href="#" class="back-link">‹ ${L('Sign in','Log masuk')}</a>`:'<span></span>'}<div class="top-actions">${langBtn()}${installBtn(true)}</div></div>`;
+  const head=(title,sub,icon)=>`<div class="login-head">${icon?'<img class="app-icon" src="icons/apple-touch-icon.png" alt="" width="76" height="76">':''}<h1 class="login-title" id="main-heading">${title}</h1>${sub?`<p class="login-sub">${sub}</p>`:''}</div>`;
+  const foot=`<p class="foot-note">${L('Your access is protected by your organisation.','Akses anda dilindungi oleh organisasi anda.')} <button type="button" class="inline-link" data-act="privacy">${L('Privacy notice','Notis privasi')}</button></p>`;
   const demo=`<button class="btn block login-demo" type="button" data-act="demo">${L('Try with a sample employee','Cuba dengan pekerja contoh')}</button>`;
 
   if(reset){
-    if(resetDone) return `<section class="login pad compact">${brand}
-      <p class="eyebrow login-eyebrow tight">${L('Password changed','Kata laluan ditukar')}</p>
-      <h1 class="login-title" id="main-heading">${L('Save your new recovery code.','Simpan kod pemulihan baharu anda.')}</h1>
-      <p class="login-sub">${L('Your old code no longer works. Keep this one somewhere safe, like your phone\'s notes or password manager.','Kod lama anda tidak lagi berfungsi. Simpan kod ini di tempat selamat, seperti nota telefon atau pengurus kata laluan.')}</p>
-      <div class="stack" style="gap:14px;margin-top:20px">
+    if(resetDone) return `<section class="login pad compact">${top(false)}
+      ${head(L('Save your new recovery code','Simpan kod pemulihan baharu anda'),L('Your password is changed and your old code no longer works. Keep this one somewhere safe, like your password manager.','Kata laluan anda telah ditukar dan kod lama tidak lagi berfungsi. Simpan kod ini di tempat selamat, seperti pengurus kata laluan.'),true)}
+      <div class="stack" style="gap:12px;margin-top:24px">
         <div class="code" aria-label="${L('Recovery code','Kod pemulihan')}">${esc(resetDone.code)}</div>
         <button class="btn ghost block" type="button" data-act="copy" data-code="${esc(resetDone.code)}">${I('copy')}${L('Copy code','Salin kod')}</button>
-        <button class="btn primary block login-btn" type="button" data-act="reset-done">${L('Sign in with new password','Log masuk dengan kata laluan baharu')} ${I('chev')}</button>
+        <button class="btn primary block login-btn" type="button" data-act="reset-done">${L('Sign in','Log masuk')}</button>
       </div>${foot}</section>`;
     return `<section class="login pad compact">
-    ${brand}
-    <a href="#" class="back-link">‹ ${L('Back to sign in','Kembali ke log masuk')}</a>
-    <p class="eyebrow login-eyebrow tight">${L('Forgot password','Lupa kata laluan')}</p>
-    <h1 class="login-title" id="main-heading">${L('Reset your password.','Set semula kata laluan.')}</h1>
-    <p class="login-sub">${L('Use the recovery code you saved when you created your account.','Gunakan kod pemulihan yang anda simpan semasa membuat akaun.')}</p>
+    ${top(true)}
+    ${head(L('Reset your password','Set semula kata laluan'),L('Use the recovery code you saved when you created your account.','Gunakan kod pemulihan yang anda simpan semasa membuat akaun.'))}
     <form id="reset" class="stack" novalidate>
-      <div class="duo">
-        <div><label class="f" for="r-id">${L('Staff ID','ID kakitangan')}</label><input type="text" id="r-id" autocomplete="username" autocapitalize="characters" placeholder="MY-1842"></div>
-        <div><label class="f" for="r-code">${L('Recovery code','Kod pemulihan')}</label><input type="text" id="r-code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX"></div>
+      <div class="fgroup">
+        ${row('r-id',L('Staff ID','ID kakitangan'),`<input type="text" id="r-id" autocomplete="username" autocapitalize="characters" placeholder="MY-1842">`)}
+        ${row('r-code',L('Recovery code','Kod pemulihan'),`<input type="text" id="r-code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX">`)}
       </div>
-      <div class="duo">
-        <div><label class="f" for="r-pw">${L('New password','Kata laluan baharu')}</label><input type="password" id="r-pw" autocomplete="new-password" placeholder="${L('8+ characters','8+ aksara')}"></div>
-        <div><label class="f" for="r-pw2">${L('Confirm','Sahkan')}</label><input type="password" id="r-pw2" autocomplete="new-password" placeholder="${L('Type it again','Taip semula')}"></div>
+      <div class="fgroup">
+        ${row('r-pw',L('New password','Kata laluan baharu'),`<input type="password" id="r-pw" autocomplete="new-password" placeholder="${L('8+ characters','8+ aksara')}">`)}
+        ${row('r-pw2',L('Confirm','Sahkan'),`<input type="password" id="r-pw2" autocomplete="new-password" placeholder="${L('Type it again','Taip semula')}">`)}
       </div>
       ${err('form')}
-      <button class="btn primary block login-btn" type="submit" id="reset-btn">${L('Reset password','Set semula kata laluan')} ${I('chev')}</button>
+      <button class="btn primary block login-btn" type="submit" id="reset-btn">${L('Reset password','Set semula kata laluan')}</button>
       <p class="switch-auth">${L('Lost your recovery code too? Ask your SMISKEE administrator to reset your account.','Kod pemulihan juga hilang? Minta pentadbir SMISKEE menetapkan semula akaun anda.')}</p>
       ${foot}
     </form></section>`;
   }
 
   if(signup) return `<section class="login pad compact">
-    ${brand}
-    <a href="#" class="back-link">‹ ${L('Back to sign in','Kembali ke log masuk')}</a>
-    <h1 class="login-title signup-title" id="main-heading">${L('Create your account.','Cipta akaun anda.')}</h1>
+    ${top(true)}
+    ${head(L('Create your account','Cipta akaun anda'))}
     <form id="login" class="stack signup-form" novalidate>
-      ${nameF}${idDept}
-      <div class="duo">
-        <div><label class="f" for="l-pw">${L('Password','Kata laluan')}</label><input type="password" id="l-pw" autocomplete="new-password" placeholder="${L('8+ characters','8+ aksara')}"></div>
-        <div><label class="f" for="l-pw2">${L('Confirm','Sahkan')}</label><input type="password" id="l-pw2" autocomplete="new-password" placeholder="${L('Type it again','Taip semula')}"></div>
-      </div>${err('pw')}
+      <div class="fgroup">
+        ${nameR}${idR}${deptR}
+        ${row('l-pw',L('Password','Kata laluan'),`<input type="password" id="l-pw" autocomplete="new-password" placeholder="${L('8+ characters','8+ aksara')}">`)}
+        ${row('l-pw2',L('Confirm','Sahkan'),`<input type="password" id="l-pw2" autocomplete="new-password" placeholder="${L('Type it again','Taip semula')}">`)}
+      </div>${err('name')}${err('id')}${err('pw')}
       ${roleF}
       <div class="consent"><input type="checkbox" id="l-consent"><label for="l-consent">${L('I agree to the','Saya bersetuju dengan')} <button type="button" class="inline-link" data-act="privacy">${L('privacy notice','notis privasi')}</button> ${L('and consent to SMISKEE processing my wellbeing check-ins.','dan memberi kebenaran kepada SMISKEE memproses daftar masuk kesejahteraan saya.')}</label></div>${err('consent')}
       ${err('form')}
-      <button class="btn primary block login-btn" type="submit" id="login-btn">${L('Create account','Cipta akaun')} ${I('chev')}</button>
+      <button class="btn primary block login-btn" type="submit" id="login-btn">${L('Create account','Cipta akaun')}</button>
       <p class="switch-auth">${L('Already have an account?','Sudah ada akaun?')} <a href="#">${L('Sign in','Log masuk')}</a></p>
     </form>
   </section>`;
 
   const fields=cloud
-    ?`<div><label class="f" for="l-id">${L('Staff ID','ID kakitangan')}</label><input type="text" id="l-id" autocomplete="username" autocapitalize="characters" placeholder="${L('e.g. MY-1842','cth. MY-1842')}">${err('id')}</div>
-      <div><div class="row between"><label class="f" for="l-pw">${L('Password','Kata laluan')}</label><a class="forgot" href="#reset">${L('Forgot password?','Lupa kata laluan?')}</a></div><input type="password" id="l-pw" autocomplete="current-password" placeholder="${L('Your password','Kata laluan anda')}">${err('pw')}</div>`
-    :nameF+idDept+roleF;
+    ?`<div class="fgroup">${idR}${row('l-pw',L('Password','Kata laluan'),`<input type="password" id="l-pw" autocomplete="current-password" placeholder="${L('Required','Diperlukan')}">`)}</div>${err('id')}${err('pw')}`
+    :`<div class="fgroup">${nameR}${idR}${deptR}</div>${err('name')}${err('id')}${roleF}`;
   return `<section class="login pad">
-    ${brand}
-    <p class="eyebrow login-eyebrow">${L('Next generation motivation','Motivasi generasi baharu')}</p>
-    <h1 class="login-title" id="main-heading">${L('Welcome to SMISKEE.','Selamat datang ke SMISKEE.')}</h1>
-    <p class="login-sub">${L('A better workday starts with a little motivation.','Hari kerja yang lebih baik bermula dengan sedikit motivasi.')}</p>
+    ${top(false)}
+    ${head(L('Sign in to SMISKEE','Log masuk ke SMISKEE'),L('A better workday starts with a little motivation.','Hari kerja yang lebih baik bermula dengan sedikit motivasi.'),true)}
     <form id="login" class="stack" novalidate>
       ${fields}
       ${err('form')}
-      <button class="btn primary block login-btn" type="submit" id="login-btn">${L('Continue securely','Teruskan dengan selamat')} ${I('chev')}</button>
-      ${cloud?`<p class="switch-auth">${L('New to SMISKEE?','Baru di SMISKEE?')} <a href="#signup">${L('Create an account','Cipta akaun')}</a></p>`:''}
+      <button class="btn primary block login-btn" type="submit" id="login-btn">${cloud?L('Sign in','Log masuk'):L('Continue','Teruskan')}</button>
+      ${cloud?`<div class="login-links"><a class="forgot" href="#reset">${L('Forgot password?','Lupa kata laluan?')}</a><a href="#signup">${L('Create an account','Cipta akaun')}</a></div>`:''}
       ${demo}
       ${foot}
     </form>
@@ -692,9 +683,8 @@ function vLogin(){
 
 function vConsent(){
   return `<section class="login pad">
-    <div class="row between"><div class="brand login-brand">${MARK}SMISKEE</div>${langBtn()}</div>
-    <p class="eyebrow login-eyebrow tight">${L('Your privacy','Privasi anda')}</p>
-    <h1 class="login-title" id="main-heading">${L('Before you continue.','Sebelum anda teruskan.')}</h1>
+    <div class="login-top"><span></span><div class="top-actions">${langBtn()}</div></div>
+    <div class="login-head"><img class="app-icon" src="icons/apple-touch-icon.png" alt="" width="76" height="76"><h1 class="login-title" id="main-heading">${L('Before you continue','Sebelum anda teruskan')}</h1></div>
     <div class="stack" style="gap:10px;margin-top:16px">
       <p class="small">${L('SMISKEE stores your stress check-ins, moods and notes. These can reveal health information, so we need your consent.','SMISKEE menyimpan daftar masuk tekanan, mood dan nota anda. Maklumat ini boleh mendedahkan maklumat kesihatan, jadi kami memerlukan kebenaran anda.')}</p>
       <ul class="plain-list small">
@@ -703,7 +693,7 @@ function vConsent(){
         <li>${L('You can download or delete your data at any time from your profile.','Anda boleh memuat turun atau memadam data anda pada bila-bila masa dari profil anda.')}</li>
       </ul>
       <button class="btn ghost block" type="button" data-act="privacy">${I('shield')}${L('Read the full privacy notice','Baca notis privasi penuh')}</button>
-      <button class="btn primary block login-btn" type="button" data-act="consent">${L('I agree, continue','Saya bersetuju, teruskan')} ${I('chev')}</button>
+      <button class="btn primary block login-btn" type="button" data-act="consent">${L('I agree, continue','Saya bersetuju, teruskan')}</button>
       <button class="btn block login-demo" type="button" data-act="signout">${L('Sign out instead','Log keluar sahaja')}</button>
     </div>
   </section>`;
