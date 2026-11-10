@@ -27,7 +27,7 @@ This copy is connected to the Supabase project **smiskee** (Singapore). The proj
 Follow these steps if you ever move to a new Supabase project.
 
 1. **Create a Supabase project.** Go to [supabase.com](https://supabase.com), sign in, click **New project**, pick the **Southeast Asia (Singapore)** region, and set a database password.
-2. **Create the tables.** In the project, open **SQL Editor → New query**, paste the whole of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. You should see "Success. No rows returned".
+2. **Create the tables.** In the project, open **SQL Editor → New query**, paste the whole of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. Then do the same with [`supabase/migrations/002_notifications.sql`](supabase/migrations/002_notifications.sql). You should see "Success. No rows returned".
 3. **Turn off email confirmation.** Open **Authentication → Sign In / Providers → Email**, switch **Confirm email** off, and save. (Staff sign in with staff ID and password, so there is no inbox to confirm.)
 4. **Copy two values.** Open **Project Settings → API** (or **Data API**) and copy:
    - the **Project URL** (looks like `https://abcd1234.supabase.co`)
@@ -38,6 +38,30 @@ Follow these steps if you ever move to a new Supabase project.
 6. **Redeploy.** Go to **Actions → Deploy to GitHub Pages → Run workflow**. After about a minute, open the live app and choose **Create account**.
 
 The anon key is designed to be public. The data is protected by row level security in the database: each person can only read their own rows, and every points change goes through a server-side function.
+
+## Notifications
+
+SMISKEE sends reminders both inside the app (the bell) and as phone notifications.
+
+| Notification | When (Malaysia time) | Who gets it |
+| --- | --- | --- |
+| Daily check-in reminder | Weekdays 9:00 AM | Anyone who hasn't checked in yet that day |
+| Leader round is live | As soon as it starts | Everyone except the host |
+| Leader round starts soon | 15 minutes before | People who tapped "Remind me" |
+| Weekly recap ready | Fridays 5:00 PM | Anyone who checked in that week |
+| Voucher expiring | Daily 10:00 AM, 3 days before expiry | The voucher's owner |
+| New badge | When earned | That person |
+
+Each person can switch the first four types on or off under **Profile → Notifications**, and turn phone notifications on per device.
+
+- **Android:** works in Chrome, and also after "Add to Home screen".
+- **iPhone:** iOS 16.4 or newer, and only after SMISKEE is added to the Home Screen and opened from there. The app explains this when needed.
+
+How it works: [`supabase/migrations/002_notifications.sql`](supabase/migrations/002_notifications.sql) adds the tables and schedules (pg_cron), and the Edge Function [`supabase/functions/send-push`](supabase/functions/send-push/index.ts) delivers the queued notifications every minute using standard Web Push. The push keys are created automatically on the first run and kept in the private `app_secrets` table.
+
+Setting it up on a new Supabase project:
+1. Run `supabase/migrations/002_notifications.sql` in the SQL Editor (after `schema.sql`). Change the `functions_url` line to your project's address first.
+2. Create an Edge Function named `send-push` with the code from `supabase/functions/send-push/index.ts`, and switch **Verify JWT** off for it.
 
 ## What the database enforces
 

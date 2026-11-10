@@ -296,3 +296,27 @@ html.lock,html.lock body{height:100%;overflow:hidden;overscroll-behavior:none}
 .mark img{width:72%;height:auto;display:block}
 .splash{width:120px;height:120px;border-radius:28px;background:#000;display:grid;place-items:center}
 .splash img{width:64%;height:auto}
+
+/* notifications */
+.top-actions{gap:8px}
+.install.icon{width:40px;height:40px;padding:0;justify-content:center;border-radius:50%}
+.install.icon .ico{width:18px;height:18px}
+.bell{position:relative;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:var(--on-forest);display:grid;place-items:center}
+.bell .ico{width:19px;height:19px}
+.bell .count{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#c2513c;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;border:2px solid var(--forest);font-variant-numeric:tabular-nums}
+.band .link{color:var(--on-forest-muted)}
+.push-card{display:flex;gap:12px;align-items:flex-start;background:var(--gold-bg);border-radius:16px;padding:14px}
+.push-card.on{background:var(--calm-bg)}
+.push-card .ib{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--surface);color:var(--forest-2);flex:none}
+.push-card .grow{flex:1;min-width:0}
+.push-card .t{font-weight:700;font-size:14px}
+.push-card .s{font-size:13px;color:var(--muted);margin-top:2px}
+.li.notif{width:100%;background:none;border:none;border-top:1px solid var(--line);text-align:left;padding-block:14px;align-items:flex-start}
+.li.notif:first-child{border-top:none}
+.li.notif .t{font-size:14px}
+.li.notif .when{margin-top:4px;font-weight:600}
+.li.notif.unread .t::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#c2513c;margin-left:8px;vertical-align:middle}
+.switch{width:46px;height:28px;border-radius:999px;border:none;background:var(--line);position:relative;flex:none;transition:background .15s}
+.switch span{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .15s}
+.switch[aria-checked="true"]{background:var(--forest-2)}
+.switch[aria-checked="true"] span{transform:translateX(18px)}

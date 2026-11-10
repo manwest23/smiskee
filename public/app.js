@@ -27,7 +27,8 @@ heart:'<path d="M12 20s-7.5-4.5-7.5-10A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7.5 3c0 
 addhome:'<rect x="5" y="2.5" width="14" height="19" rx="3"/><path d="M12 8.5v7M8.5 12h7"/>',
 share:'<path d="M12 3v12M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>',
 dots:'<circle cx="12" cy="5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="19" r="1.4" fill="currentColor"/>',
-plusbox:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8.5v7M8.5 12h7"/>'
+plusbox:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8.5v7M8.5 12h7"/>',
+bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 21h4"/>'
 };
 const I=(n,c='')=>`<svg class="ico ${c}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
 const MARK='<span class="mark"><img src="icons/logo-mark.png" alt="" width="240" height="165"></span>';
@@ -153,6 +154,12 @@ function seed(name,staffId,dept,role){
   return {mode:'demo',v:2,user:{name,staffId:normStaff(staffId),dept,role},points:2840,lifetime:3340,checkins,plays,activity,
     keys:[],coupons:[{id:'c0',rid:'zus',brand:'ZUS Coffee',label:'RM15 voucher',code:'SMK-ZU5C-4K2Q',d:dkey(addDays(lastMon,4))}],
     intents:{},badges:['Team Player','Positive Energy','Innovation'],reminders:[],
+    notify:{checkin:true,session:true,recap:true,coupon:true},
+    notifs:[
+      {id:'n1',kind:'session',title:'Faizal Rahman is hosting a live round',body:'Join "Fintech Trivia Round" now for double points.',url:'#games',ts:Date.now()-20*60000,read:false},
+      {id:'n2',kind:'checkin',title:'Time for your daily check-in',body:'How are you feeling today? It takes 20 seconds and earns 20 points.',url:'#checkin',ts:new Date(dkey(now)+'T09:00:00+08:00').getTime(),read:false},
+      {id:'n3',kind:'recap',title:'Your weekly recap is ready',body:'See how your week went and pick your intentions for next week.',url:'#recap',ts:addDays(lastMon,4).getTime()+17*36e5,read:true},
+      {id:'n4',kind:'coupon',title:'ZUS Coffee voucher expires soon',body:'Your code SMK-ZU5C-4K2Q expires in 3 days. Use it before then.',url:'#rewards',ts:addDays(lastMon,4).getTime()+10*36e5,read:true}],
     sessions:[
       {id:'s1',host:'Faizal Rahman',role:'Head of Retail Branches',name:'Fintech Trivia Round',when:'Live now',live:true},
       {id:'s2',host:'Siti Mariam',role:'Head of Operations',name:'Compliance Quick-fire',when:'Thu · 12:30 PM',live:false},
@@ -165,7 +172,7 @@ async function loadCloud(){
   if(ue||!user){st=null;return}
   const since=dkey(addDays(nowKL(),-120));
   const q=await Promise.all([
-    sb.from('profiles').select('id,full_name,staff_id,department,role').eq('id',user.id).maybeSingle(),
+    sb.from('profiles').select('id,full_name,staff_id,department,role,notify').eq('id',user.id).maybeSingle(),
     sb.from('checkins').select('day,stress,mood,tags,note').gte('day',since),
     sb.from('ledger').select('day,kind,award_key,title,sub,points,created_at').gte('day',since).order('created_at',{ascending:true}),
     sb.from('plays').select('day,game,points').gte('day',since),
@@ -175,9 +182,10 @@ async function loadCloud(){
     sb.from('rewards').select('id,brand,category,value_rm,points,color,perk').order('sort'),
     sb.from('session_reminders').select('session_id'),
     sb.rpc('list_sessions'),
-    sb.rpc('my_points')]);
+    sb.rpc('my_points'),
+    sb.from('notifications').select('id,kind,title,body,url,created_at,read_at').order('created_at',{ascending:false}).limit(40)]);
   const bad=q.find(r=>r.error); if(bad) throw bad.error;
-  const [pr,ci,lg,pl,cp,bd,it,rw,rm,ss,pt]=q.map(r=>r.data);
+  const [pr,ci,lg,pl,cp,bd,it,rw,rm,ss,pt,nf]=q.map(r=>r.data);
   if(!pr) throw new Error('Your staff profile was not found. Ask your administrator to check your account.');
   const checkins={};(ci||[]).forEach(c=>checkins[c.day]={stress:c.stress,mood:c.mood,tags:c.tags||[],note:c.note||''});
   const keys=(lg||[]).filter(l=>l.award_key).map(l=>l.award_key);
@@ -194,9 +202,15 @@ async function loadCloud(){
     badges:(bd||[]).map(b=>b.badge), intents,
     rewards:(rw||[]).map(r=>({id:r.id,brand:r.brand,cat:r.category,val:r.value_rm,pts:r.points,c:r.color,perk:r.perk})),
     reminders:(rm||[]).map(r=>r.session_id),
-    sessions:(ss||[]).map(s=>({id:s.id,host:s.host_name,role:s.host_title,name:s.name,when:s.live?'Live now':s.when_label,live:s.live,mine:s.is_mine}))};
+    sessions:(ss||[]).map(s=>({id:s.id,host:s.host_name,role:s.host_title,name:s.name,when:s.live?'Live now':fmtStart(s.starts_at),live:s.live,mine:s.is_mine})),
+    notify:pr.notify||{checkin:true,session:true,recap:true,coupon:true},
+    notifs:(nf||[]).map(mapNotif)};
 }
 
+const mapNotif=n=>({id:n.id,kind:n.kind,title:n.title,body:n.body,url:n.url,ts:Date.parse(n.created_at),read:!!n.read_at});
+function fmtStart(iso){if(!iso)return '';const d=new Date(new Date(iso).toLocaleString('en-US',{timeZone:TZ})),t=nowKL();
+  const day=dkey(d)===dkey(t)?'Today':dkey(d)===dkey(addDays(t,1))?'Tomorrow':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+', '+d.getDate()+' '+MON[d.getMonth()];
+  const h=d.getHours(),m=d.getMinutes();return `${day} · ${h%12||12}:${pad(m)} ${h<12?'AM':'PM'}`}
 const friendly=e=>{const m=(e&&(e.message||e.error_description))||String(e);
   if(/fetch|network|Failed to fetch/i.test(m))return 'No connection. Check your internet and try again.';
   if(/JWT|sign in again|refresh token/i.test(m))return 'Your session has expired. Please sign in again.';
@@ -262,7 +276,8 @@ const act={
   },
   async host(name,when){
     if(isCloud()){const {error}=await sb.rpc('host_session',{p_name:name,p_when:when});if(error)throw error;await loadCloud();return}
-    st.sessions.unshift({id:'s'+Date.now(),host:st.user.name,role:'Team leader · '+st.user.dept,name:name||'Team Trivia',when,live:when==='Live now',mine:true});saveLocal();
+    const label={now:'Live now','tomorrow-1230':'Tomorrow · 12:30 PM','thu-1630':'Thu · 4:30 PM','fri-1630':'Fri · 4:30 PM'}[when]||when;
+    st.sessions.unshift({id:'s'+Date.now(),host:st.user.name,role:'Team leader · '+st.user.dept,name:name||'Team Trivia',when:label,live:when==='now',mine:true});saveLocal();
   },
   async endSession(id){
     if(isCloud()){const {error}=await sb.rpc('end_session',{p_session:id});if(error)throw error;await loadCloud();return}
@@ -278,8 +293,21 @@ const act={
     return {enough:true,sample:true,department:st.user.dept,members:12,checked:9,avg:5.8,prev_avg:6.4,calm:3,press:4,high:2,
       tags:[{tag:'Month-end closing',people:6},{tag:'Customer queue',people:5},{tag:'Workload',people:4},{tag:'System issues',people:2}]};
   },
+  async markRead(){
+    if(!st.notifs.some(n=>!n.read))return;
+    st.notifs.forEach(n=>n.read=true);
+    if(isCloud()){const {error}=await sb.rpc('mark_notifications_read');if(error)throw error}else saveLocal();
+  },
+  async setPref(k,on){
+    if(isCloud()){const {data,error}=await sb.rpc('set_notify_prefs',{p:{[k]:on}});if(error)throw error;st.notify=data;return}
+    st.notify[k]=on;saveLocal();
+  },
+  async testNotification(){
+    if(!isCloud())throw new Error('Phone notifications work after you sign in with your staff ID.');
+    const {error}=await sb.rpc('send_test_notification');if(error)throw error;
+  },
   async signOut(){
-    if(isCloud()){try{await sb.auth.signOut()}catch(e){}}
+    if(isCloud()){try{await removeThisDevice()}catch(e){}try{await sb.auth.signOut()}catch(e){}}
     try{localStorage.removeItem(KEY)}catch(e){}
     st=null;cache.lb=null;cache.pulse=null;
   }
@@ -439,7 +467,7 @@ function vLogin(){
 }
 
 function header(eyebrow,title,sub=''){
-  return `<header class="band pad"><div class="row between"><div class="brand">${MARK}SMISKEE</div><div class="top-actions">${installBtn()}<a href="#profile" class="avatar" style="text-decoration:none" aria-label="Profile">${esc(initials(st.user.name))}</a></div></div>
+  return `<header class="band pad"><div class="row between"><div class="brand">${MARK}SMISKEE</div><div class="top-actions">${installBtn(true)}${bellBtn()}<a href="#profile" class="avatar" style="text-decoration:none" aria-label="Profile">${esc(initials(st.user.name))}</a></div></div>
   <p class="eyebrow" style="margin-top:26px">${eyebrow}</p><h1 style="margin-top:4px">${title}</h1>${sub?`<p class="muted" style="margin-top:6px">${sub}</p>`:''}</header>`;
 }
 
@@ -604,7 +632,7 @@ function vRecap(){
   const canPlan=off===0;
   const diff=prev.avg!=null&&w.avg!=null?w.avg-prev.avg:null;
   const qi=QUOTES[s.getDate()%QUOTES.length];
-  return `<header class="band pad"><div class="row between"><a href="#checkin" class="link" style="color:var(--on-forest-muted)">‹ Back</a><div class="top-actions">${installBtn()}<div class="brand">${MARK}</div></div></div>
+  return `<header class="band pad"><div class="row between"><a href="#checkin" class="link" style="color:var(--on-forest-muted)">‹ Back</a><div class="top-actions">${installBtn(true)}${bellBtn()}</div></div>
     <p class="eyebrow" style="margin-top:22px">Weekly recap</p><h1 style="margin-top:4px">${range}</h1>
     <div class="tabs" style="margin-top:16px"><button data-act="rweek" data-v="this" aria-pressed="${recapWeek==='this'}">This week</button><button data-act="rweek" data-v="last" aria-pressed="${recapWeek==='last'}">Last week</button></div></header>
   <main class="pad lift stack">
@@ -638,7 +666,7 @@ function vTeam(){
   const head=header('Team pulse','How your team is doing.',`${esc(st.user.dept)}${t&&t.sample?' · sample data':''}`);
   const hostForm=`<form class="card stack" id="host-form"><div><p class="eyebrow">Host a session</p><h2 class="sec-title" style="margin-top:2px">Play with your team</h2><p class="small muted">Everyone in the app sees your session. Live sessions stay open for 3 hours.</p></div>
       <div><label class="f" for="h-name">Session name</label><input type="text" id="h-name" maxlength="60" placeholder="e.g. Thursday Trivia"></div>
-      <div><label class="f" for="h-when">When</label><select id="h-when"><option>Live now</option><option>Tomorrow · 12:30 PM</option><option>Thu · 4:30 PM</option><option>Fri · 4:30 PM</option></select></div>
+      <div><label class="f" for="h-when">When</label><select id="h-when"><option value="now">Live now</option><option value="tomorrow-1230">Tomorrow · 12:30 PM</option><option value="thu-1630">Thursday · 4:30 PM</option><option value="fri-1630">Friday · 4:30 PM</option></select></div>
       <button class="btn primary block" type="submit">Publish session</button></form>`;
   const privacy=`<div class="card flat note">${I('lock')}<div>You only see anonymous averages. Results appear when five or more people have checked in this week, and no individual answers or notes are ever shown.</div></div>`;
   if(!t) return `${head}<main class="pad lift stack"><div class="card"><p class="muted">${cache.pulseErr?esc(cache.pulseErr):'Loading your team pulse…'}</p></div>${hostForm}${privacy}</main>`;
@@ -673,6 +701,7 @@ function vProfile(){
       <a class="li" href="#recap" style="text-decoration:none;color:inherit"><span class="ib">${I('chart')}</span><div class="grow"><p class="t">Weekly recap</p><p class="s">Stress summary and next week's plan</p></div>${I('chev')}</a>
       ${u.role==='leader'?`<a class="li" href="#team" style="text-decoration:none;color:inherit"><span class="ib">${I('team')}</span><div class="grow"><p class="t">Team pulse</p><p class="s">Anonymous team wellbeing</p></div>${I('chev')}</a>`:''}
     </div></div>
+    ${notifSettings()}
     ${st.mode==='demo'?`<div class="card stack" style="gap:10px"><p class="eyebrow">Demo settings</p>
       <div class="seg"><button data-act="role" data-v="employee" aria-pressed="${u.role==='employee'}">Employee view</button><button data-act="role" data-v="leader" aria-pressed="${u.role==='leader'}">Leader view</button></div>
       <p class="small muted">Earlier weeks are filled with sample check-ins so you can see the recap. Everything is saved on this device only.</p>
@@ -681,6 +710,103 @@ function vProfile(){
     :`<div class="card stack" style="gap:10px"><p class="eyebrow">Account</p><p class="small muted">Your progress is saved to your SMISKEE account, so you can sign in on any device.</p>
       <button class="btn ghost block" data-act="signout">Sign out</button></div>`}
   </main>`;
+}
+
+/* ---------- notifications ---------- */
+const NOTIF_TYPES=[
+  ['checkin','Daily check-in reminder','Weekdays at 9:00 AM, only if you haven\'t checked in'],
+  ['session','Leader sessions','When a live round starts, and 15 minutes before ones you set a reminder for'],
+  ['recap','Weekly recap','Fridays at 5:00 PM'],
+  ['coupon','Vouchers expiring','3 days before a voucher code expires']];
+const NOTIF_ICON={checkin:'pulse',session:'game',recap:'chart',coupon:'gift',badge:'trophy',test:'bell'};
+const unreadCount=()=>st&&st.notifs?st.notifs.filter(n=>!n.read).length:0;
+function bellBtn(){const n=unreadCount();return `<button class="bell" data-act="notifs" aria-label="Notifications${n?`, ${n} unread`:''}">${I('bell')}${n?`<span class="count">${n>9?'9+':n}</span>`:''}</button>`}
+function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return 'Just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+(h===1?' hour ago':' hours ago');
+  const d=new Date(new Date(ts).toLocaleString('en-US',{timeZone:TZ}));return (dkey(d)===dkey(addDays(nowKL(),-1))?'Yesterday':`${d.getDate()} ${MON[d.getMonth()]}`)+` · ${d.getHours()%12||12}:${pad(d.getMinutes())} ${d.getHours()<12?'AM':'PM'}`}
+
+/* Phone push: 'unsupported' | 'ios-install' | 'denied' | 'off' | 'on' */
+let pushStatus='off';
+const pushSupported=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+async function refreshPushStatus(){
+  if(platform()==='ios'&&!isStandalone()){pushStatus='ios-install';return pushStatus}
+  if(!pushSupported()){pushStatus='unsupported';return pushStatus}
+  if(Notification.permission==='denied'){pushStatus='denied';return pushStatus}
+  try{const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&await reg.pushManager.getSubscription();pushStatus=sub&&Notification.permission==='granted'?'on':'off'}catch(e){pushStatus='off'}
+  return pushStatus;
+}
+const keyBytes=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0))};
+async function saveSubscription(sub){
+  const j=sub.toJSON();
+  const {error}=await sb.rpc('save_push_subscription',{p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth,p_agent:navigator.userAgent});
+  if(error)throw error;
+}
+async function enablePush(){
+  if(!isCloud())throw new Error('Phone notifications work after you sign in with your staff ID.');
+  if(pushStatus==='ios-install'){installSheet();return false}
+  if(!pushSupported())throw new Error('This browser can\'t show notifications. Try Chrome on Android, or Safari on iPhone after adding SMISKEE to your Home Screen.');
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted'){await refreshPushStatus();throw new Error(perm==='denied'?'Notifications are blocked. Allow them for this site in your browser settings.':'Notifications were not turned on.')}
+  const {data:key,error}=await sb.rpc('get_push_public_key');if(error)throw error;
+  if(!key)throw new Error('Notifications are still being set up. Please try again in a minute.');
+  const reg=await navigator.serviceWorker.register('sw.js');await navigator.serviceWorker.ready;
+  let sub=await reg.pushManager.getSubscription();
+  const want=keyBytes(key);
+  if(sub&&sub.options&&sub.options.applicationServerKey){const have=new Uint8Array(sub.options.applicationServerKey);if(have.length!==want.length||have.some((b,i)=>b!==want[i])){await sub.unsubscribe();sub=null}}
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:want});
+  await saveSubscription(sub);
+  pushStatus='on';return true;
+}
+async function removeThisDevice(){
+  if(!pushSupported())return;
+  const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&await reg.pushManager.getSubscription();
+  if(!sub)return;
+  try{await sb.rpc('delete_push_subscription',{p_endpoint:sub.endpoint})}catch(e){}
+  await sub.unsubscribe();
+}
+async function disablePush(){await removeThisDevice();pushStatus='off'}
+
+function pushCard(where){
+  const demo=st.mode==='demo';
+  const btn=(act,label,cls='primary')=>`<button class="btn ${cls}" data-act="${act}" data-where="${where}" style="padding:10px 14px;font-size:14px">${label}</button>`;
+  let icon='bell',title,text,action='';
+  if(demo){title='Phone notifications';text='Available after you sign in with your staff ID. In demo mode, notifications only appear in this list.'}
+  else if(pushStatus==='on'){title='Phone notifications are on';text='This device will get SMISKEE reminders even when the app is closed.';action=btn('push-test','Send a test','ghost')+btn('push-off','Turn off','ghost')}
+  else if(pushStatus==='ios-install'){title='Get reminders on your iPhone';text='First add SMISKEE to your Home Screen, open it from there, then turn on notifications.';action=btn('install','How to add it')}
+  else if(pushStatus==='denied'){title='Notifications are blocked';text='Allow notifications for this site in your browser or phone settings, then come back here.'}
+  else if(pushStatus==='unsupported'){title='Not available in this browser';text='Use Chrome on Android, or Safari on iPhone after adding SMISKEE to your Home Screen.'}
+  else {title='Turn on phone notifications';text='Get your 9:00 AM check-in reminder and live leader rounds, even when SMISKEE is closed.';action=btn('push-on','Turn on')}
+  return `<div class="push-card ${pushStatus==='on'&&!demo?'on':''}"><span class="ib">${I(icon)}</span><div class="grow"><p class="t">${title}</p><p class="s">${text}</p>${action?`<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">${action}</div>`:''}</div></div>`;
+}
+function notifSettings(){
+  return `<div class="card stack" style="gap:14px"><div><p class="eyebrow">Notifications</p><h2 class="sec-title" style="margin-top:2px">What should we remind you about?</h2></div>
+    ${pushCard('profile')}
+    <div class="list">${NOTIF_TYPES.map(([k,l,d])=>`<div class="li"><div class="grow"><p class="t">${l}</p><p class="s">${d}</p></div>
+      <button class="switch" role="switch" aria-checked="${st.notify[k]!==false}" aria-label="${l}" data-act="pref" data-k="${k}"><span></span></button></div>`).join('')}</div></div>`;
+}
+function notifSheet(){
+  G={id:'notifs'};openSheet('Notifications');drawNotifs();
+  act.markRead().then(updateBell).catch(()=>{});
+}
+function drawNotifs(){
+  const list=[...st.notifs].sort((a,b)=>b.ts-a.ts);
+  SB(`<div class="stack" style="gap:14px">${pushCard('sheet')}
+    ${list.length?`<div class="card" style="padding:6px 16px"><div class="list">${list.map(n=>`<button class="li notif ${n.read?'':'unread'}" data-act="open-notif" data-url="${esc(n.url)}"><span class="ib">${I(NOTIF_ICON[n.kind]||'bell')}</span><div class="grow"><p class="t">${esc(n.title)}</p><p class="s">${esc(n.body)}</p><p class="s when">${ago(n.ts)}</p></div></button>`).join('')}</div></div>`
+    :`<div class="card flat"><p class="muted">No notifications yet. Your check-in reminders and leader rounds will show up here.</p></div>`}
+    <a class="link" href="#profile" data-act="close" style="align-self:center">Notification settings</a></div>`);
+}
+function updateBell(){document.querySelectorAll('.bell').forEach(b=>{b.outerHTML=bellBtn()})}
+async function refreshNotifs(){
+  if(!isCloud()||document.hidden)return;
+  const {data,error}=await sb.from('notifications').select('id,kind,title,body,url,created_at,read_at').order('created_at',{ascending:false}).limit(40);
+  if(error||!data||!st)return;
+  const before=unreadCount();st.notifs=data.map(mapNotif);
+  if(unreadCount()!==before){updateBell();if(G&&G.id==='notifs')drawNotifs()}
+}
+setInterval(refreshNotifs,60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNotifs()});
+async function pushAction(fn,okMsg,where){
+  try{const r=await fn();if(r!==false&&okMsg)toast(okMsg)}catch(e){toast(friendly(e))}
+  if(where==='sheet'&&G&&G.id==='notifs')drawNotifs();else if(route()==='profile')render();
 }
 
 /* ---------- sheet + games ---------- */
@@ -788,7 +914,7 @@ const isStandalone=()=>{try{return matchMedia('(display-mode: standalone)').matc
 function platform(){const u=navigator.userAgent||'';
   if(/iPhone|iPad|iPod/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1))return 'ios';
   if(/Android/.test(u))return 'android';return 'other'}
-function installBtn(){return isStandalone()?'':`<button class="install" data-act="install" aria-label="Add SMISKEE to your home screen">${I('addhome')}Add to Home</button>`}
+function installBtn(compact){return isStandalone()?'':`<button class="install${compact?' icon':''}" data-act="install" aria-label="Add SMISKEE to your home screen" title="Add to Home Screen">${I('addhome')}${compact?'':'Add to Home'}</button>`}
 function installSheet(){
   const p=platform(); if(!installTab) installTab=p==='android'?'android':'ios';
   G={id:'install'}; openSheet('Add SMISKEE to your home screen'); drawInstall(p);
@@ -861,7 +987,7 @@ async function submitLogin(){
       if(error)throw error;
     }
     await loadCloud();
-    loginErr={};location.hash='home';render();toast(`Welcome, ${firstName(st.user.name)}`);
+    loginErr={};location.hash='home';render();toast(`Welcome, ${firstName(st.user.name)}`);refreshPushStatus();
   }catch(e){
     let m=friendly(e);
     if(/Invalid login credentials/i.test(m))m='Staff ID or password is incorrect.';
@@ -886,7 +1012,7 @@ document.addEventListener('click',e=>{
     case 'cancel-edit':editing=false;draft=null;render();break;
     case 'play':startGame(el.dataset.g);break;
     case 'session':{const s=st.sessions.find(x=>x.id===el.dataset.id);if(s)startGame('session',{s});break}
-    case 'remind':run(()=>act.remind(el.dataset.id),on=>on?'We\'ll remind you before it starts':'Reminder removed').then(render);break;
+    case 'remind':run(()=>act.remind(el.dataset.id),on=>on?'We\'ll notify you 15 minutes before it starts':'Reminder removed').then(render);break;
     case 'end-session':run(()=>act.endSession(el.dataset.id),'Session ended').then(render);break;
     case 'close':closeSheet();break;
     case 'replay':{const id=G.id,s=G.s;clearInterval(timer);startGame(id,{s});break}
@@ -903,6 +1029,13 @@ document.addEventListener('click',e=>{
     case 'confirm-redeem':confirmRedeem();break;
     case 'copy':copyCode(el.dataset.code);break;
     case 'install':installSheet();break;
+    case 'notifs':notifSheet();break;
+    case 'open-notif':{const u=el.dataset.url||'#home';closeSheet();location.hash=u.replace(/^#?/,'#');break}
+    case 'push-on':pushAction(enablePush,'Phone notifications are on',el.dataset.where);break;
+    case 'push-off':pushAction(disablePush,'Phone notifications turned off for this device',el.dataset.where);break;
+    case 'push-test':pushAction(()=>act.testNotification(),'Test sent. It should arrive within a minute.',el.dataset.where);break;
+    case 'pref':{const k=el.dataset.k,on=el.getAttribute('aria-checked')!=='true';el.setAttribute('aria-checked',on);
+      act.setPref(k,on).catch(e=>{el.setAttribute('aria-checked',!on);toast(friendly(e))});break}
     case 'itab':installTab=v;drawInstall(platform());break;
     case 'install-now':if(deferredInstall){deferredInstall.prompt();deferredInstall.userChoice.then(c=>{deferredInstall=null;if(c&&c.outcome==='accepted')closeSheet();else drawInstall(platform())}).catch(()=>{})}break;
     case 'rweek':recapWeek=v;render();break;
@@ -940,7 +1073,10 @@ async function boot(){
     }catch(e){st=null;toast(friendly(e))}
     sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&st&&st.mode==='cloud'){st=null;render()}});
   }
-  if(!st){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&d.mode==='demo'&&d.v===2)st=d}catch(e){}}
+  if(!st){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&d.mode==='demo'&&d.v===2)st=d;if(st&&!st.notifs){st.notifs=[];st.notify={checkin:true,session:true,recap:true,coupon:true}}}catch(e){}}
   render();
+  await refreshPushStatus();
+  if(isCloud()&&pushStatus==='on'){try{const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&await reg.pushManager.getSubscription();if(sub)await saveSubscription(sub)}catch(e){}}
+  if(st&&route()==='profile')render();
 }
 boot();
