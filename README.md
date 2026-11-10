@@ -27,7 +27,7 @@ This copy is connected to the Supabase project **smiskee** (Singapore). The proj
 Follow these steps if you ever move to a new Supabase project.
 
 1. **Create a Supabase project.** Go to [supabase.com](https://supabase.com), sign in, click **New project**, pick the **Southeast Asia (Singapore)** region, and set a database password.
-2. **Create the tables.** In the project, open **SQL Editor → New query**, paste the whole of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. Then do the same with [`supabase/migrations/002_notifications.sql`](supabase/migrations/002_notifications.sql). You should see "Success. No rows returned".
+2. **Create the tables.** In the project, open **SQL Editor → New query**, paste the whole of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. Then do the same with [`supabase/migrations/002_notifications.sql`](supabase/migrations/002_notifications.sql) and [`supabase/migrations/003_privacy_recognition_language.sql`](supabase/migrations/003_privacy_recognition_language.sql), in that order. You should see "Success. No rows returned".
 3. **Turn off email confirmation.** Open **Authentication → Sign In / Providers → Email**, switch **Confirm email** off, and save. (Staff sign in with staff ID and password, so there is no inbox to confirm.)
 4. **Copy two values.** Open **Project Settings → API** (or **Data API**) and copy:
    - the **Project URL** (looks like `https://abcd1234.supabase.co`)
@@ -62,6 +62,18 @@ How it works: [`supabase/migrations/002_notifications.sql`](supabase/migrations/
 Setting it up on a new Supabase project:
 1. Run `supabase/migrations/002_notifications.sql` in the SQL Editor (after `schema.sql`). Change the `functions_url` line to your project's address first.
 2. Create an Edge Function named `send-push` with the code from `supabase/functions/send-push/index.ts`, and switch **Verify JWT** off for it.
+
+## Privacy, accounts and wellbeing features
+
+- **Consent:** people must agree to the privacy notice when they create an account. Existing accounts are asked once on their next sign-in. The notice is in the app (sign-in page, Create account page and Profile).
+- **Privacy notice:** written to match how SMISKEE actually handles data. **It is a draft for your compliance and legal team to review** before staff use the app. Set the contact shown in it by adding `privacyContact: "hr-wellbeing@yourbank.com.my"` to `public/config.js`; until then it says "your HR department".
+- **Download my data / Delete my account:** in Profile. Deleting removes the login and every row about the person straight away.
+- **Recovery codes (self-service password reset):** each person gets a one-time code when they create their account and can make a new one in Profile. On the sign-in page, "Forgot password?" lets them set a new password with their staff ID and code. Codes are stored hashed; 5 wrong tries lock that staff ID for an hour. This uses the Edge Function [`supabase/functions/reset-password`](supabase/functions/reset-password/index.ts) (deploy with **Verify JWT** off).
+- **If someone loses both password and code:** an admin deletes the login (see Admin tasks) and they create the account again.
+- **Appreciation:** staff thank colleagues with a badge and a short message. The colleague gets 30 points and the badge; the sender gets 10 points for their first thank-you each day; up to 5 a day.
+- **Tough-stretch support:** after three check-ins in a row at 8 or higher, the person (only them) sees a gentle card offering a breathing reset or a catch-up request. A catch-up request tells the leaders in their department only their name and that they'd like a chat.
+- **Bahasa Malaysia:** every screen, the quiz and notifications are available in English and Bahasa Malaysia. People switch on the sign-in page or in Profile. The Malay text was written for this app; a native-speaker review before launch is recommended.
+- **Accessibility:** colours meet WCAG 2.1 AA contrast, text size can be set to Standard / Large / Extra large in Profile, all controls work with a keyboard and screen reader, and pop-ups keep focus inside until closed.
 
 ## What the database enforces
 
