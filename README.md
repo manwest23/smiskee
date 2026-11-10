@@ -18,7 +18,13 @@ A motivation web app for bank employees. Staff check in on their stress level ea
 - **Install:** the app can be added to the home screen on iPhone and Android (it has a manifest, icons and offline support).
 - **Demo mode:** with no database connected, or via "Try with a sample employee", everything runs in the browser with sample data.
 
-## Connect the database (one-time, about 10 minutes)
+## Database
+
+This copy is connected to the Supabase project **smiskee** (Singapore). The project URL and publishable key are in [`public/config.js`](public/config.js). They are safe to publish: the database's row level security and functions decide what anyone can do.
+
+## Connect a different database
+
+Follow these steps if you ever move to a new Supabase project.
 
 1. **Create a Supabase project.** Go to [supabase.com](https://supabase.com), sign in, click **New project**, pick the **Southeast Asia (Singapore)** region, and set a database password.
 2. **Create the tables.** In the project, open **SQL Editor → New query**, paste the whole of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. You should see "Success. No rows returned".
@@ -26,7 +32,7 @@ A motivation web app for bank employees. Staff check in on their stress level ea
 4. **Copy two values.** Open **Project Settings → API** (or **Data API**) and copy:
    - the **Project URL** (looks like `https://abcd1234.supabase.co`)
    - the **anon public** key (a long string starting with `eyJ`, or a `sb_publishable_…` key)
-5. **Add them to GitHub.** In this repo go to **Settings → Secrets and variables → Actions → Variables tab → New repository variable** and add:
+5. **Point the app at it.** Either edit `public/config.js`, or in this repo go to **Settings → Secrets and variables → Actions → Variables tab → New repository variable** and add (these override `config.js`):
    - `SUPABASE_URL` = the Project URL
    - `SUPABASE_ANON_KEY` = the anon public key
 6. **Redeploy.** Go to **Actions → Deploy to GitHub Pages → Run workflow**. After about a minute, open the live app and choose **Create account**.
