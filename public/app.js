@@ -18,6 +18,18 @@ function setLang(l){LANG=LANGS.includes(l)?l:'en';try{localStorage.setItem('smis
 document.documentElement.lang=LANG;
 let TEXT=(()=>{try{const v=localStorage.getItem('smiskee-text');return ['md','lg','xl'].includes(v)?v:'md'}catch(e){return 'md'}})();
 function setText(t){TEXT=t;try{localStorage.setItem('smiskee-text',t)}catch(e){}}
+/* Appearance: 'auto' follows the phone's light or dark setting. */
+let THEME=(()=>{try{const v=localStorage.getItem('smiskee-theme');return ['auto','light','dark'].includes(v)?v:'auto'}catch(e){return 'auto'}})();
+const darkMQ=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+function applyTheme(){const dark=THEME==='dark'||(THEME==='auto'&&!!darkMQ&&darkMQ.matches);document.documentElement.dataset.theme=dark?'dark':'light';
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=dark?'#1d4a3d':'#183b32'}
+function setTheme(t){THEME=t;try{localStorage.setItem('smiskee-theme',t)}catch(e){}applyTheme()}
+if(darkMQ){if(darkMQ.addEventListener)darkMQ.addEventListener('change',applyTheme);else if(darkMQ.addListener)darkMQ.addListener(applyTheme)}
+applyTheme();
+/* Welcome tour: shown once per device after the first sign-in. */
+let tourStep=0,tourDir='';
+const tourSeen=()=>{try{return localStorage.getItem('smiskee-tour')==='1'}catch(e){return true}};
+const setTourSeen=v=>{try{if(v)localStorage.setItem('smiskee-tour','1');else localStorage.removeItem('smiskee-tour')}catch(e){}};
 
 /* ---------- icons ---------- */
 const P={
@@ -28,6 +40,7 @@ gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 
 user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
 flame:'<path d="M12 3s5 4.5 5 9.5a5 5 0 0 1-10 0C7 10 9 8.5 9 8.5s.5 2.5 2 3c0-3 1-6.5 1-8.5z"/>',
 chev:'<path d="m9 6 6 6-6 6"/>',
+moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
 lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
 team:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5M16 4.5a3.5 3.5 0 0 1 0 7M18 15c2 .6 3.2 2.2 3.8 5"/>',
 chart:'<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
@@ -579,6 +592,7 @@ function render(){
   if(!st){const h=location.hash.slice(1);const m=h==='signup'?'signup':h==='reset'?'reset':'signin';if(m!==authMode){authMode=m;loginErr={};resetDone=null}
     nav.hidden=true;app.innerHTML=vLogin();window.scrollTo(0,0);return}
   if(isCloud()&&!st.user.consentAt){nav.hidden=true;app.classList.add('login-mode');document.documentElement.classList.add('lock');app.innerHTML=vConsent();return}
+  if(!tourSeen()&&$('#sheet').hidden){nav.hidden=true;app.classList.add('login-mode');document.documentElement.classList.add('lock');app.innerHTML=vTour();window.scrollTo(0,0);return}
   const r=route();
   if(r==='team'&&st.user.role!=='leader'){location.hash='home';return}
   app.innerHTML={home:vHome,checkin:vCheckin,games:vGames,rewards:vRewards,profile:vProfile,recap:vRecap,team:vTeam,kudos:vKudos}[r]();
@@ -688,6 +702,36 @@ function vLogin(){
     </form>
   </section>`;
 }
+
+function tourSteps(){return [
+ {t:L(`Welcome, ${esc(firstName(st.user.name))}`,`Selamat datang, ${esc(firstName(st.user.name))}`,`Selamat datang, ${esc(firstName(st.user.name))}`),
+  b:L('Here is a quick look at how SMISKEE works. It takes less than a minute.','Ini gambaran ringkas cara SMISKEE berfungsi. Ia mengambil masa kurang seminit.','Berikut gambaran singkat cara kerja SMISKEE. Tidak sampai satu menit.')},
+ {icon:'pulse',t:L('Check in each morning','Daftar masuk setiap pagi','Check-in setiap pagi'),
+  b:L('Slide to show how stressed you feel, from 1 to 10. It takes 20 seconds and earns 20 points. Only you can see your answers.','Luncurkan untuk menunjukkan tahap tekanan anda, dari 1 hingga 10. Hanya 20 saat dan anda dapat 20 mata. Hanya anda boleh melihat jawapan anda.','Geser untuk menunjukkan tingkat stres Anda, dari 1 sampai 10. Hanya 20 detik dan Anda mendapat 20 poin. Hanya Anda yang dapat melihat jawaban Anda.')},
+ {icon:'game',t:L('Play, earn, redeem','Main, kumpul, tebus','Main, kumpulkan, tukarkan'),
+  b:L('Short games and live rounds with your leaders earn points. Swap them for coffee, food and time-off rewards.','Permainan ringkas dan pusingan langsung bersama ketua anda memberi mata. Tukarkan dengan ganjaran kopi, makanan dan cuti.','Permainan singkat dan ronde langsung bersama pemimpin Anda memberi poin. Tukarkan dengan hadiah kopi, makanan, dan waktu istirahat.')},
+ {icon:'chart',t:L('Your week, summed up','Minggu anda, diringkaskan','Minggu Anda, dirangkum'),
+  b:L('Every Friday you get a recap of your stress and a motivation message for the week ahead. Leaders only ever see anonymous team averages.','Setiap Jumaat anda menerima ringkasan tekanan dan mesej motivasi untuk minggu depan. Ketua hanya melihat purata pasukan tanpa nama.','Setiap Jumat Anda menerima rekap stres dan pesan motivasi untuk minggu depan. Pemimpin hanya melihat rata-rata tim tanpa nama.')}]}
+function vTour(){
+  const S=tourSteps();tourStep=Math.max(0,Math.min(tourStep,S.length-1));const s=S[tourStep],last=tourStep===S.length-1;
+  return `<section class="login pad tour">
+    <div class="login-top">${tourStep?`<button type="button" class="back-link" data-act="tour-back">‹ ${L('Back','Kembali','Kembali')}</button>`:'<span></span>'}${last?'<span></span>':`<button type="button" class="tour-skip" data-act="tour-done">${L('Skip','Langkau','Lewati')}</button>`}</div>
+    <div class="tour-body ${tourDir}">
+      ${s.icon?`<span class="tour-ico" aria-hidden="true">${I(s.icon)}</span>`:'<img class="app-icon" src="icons/apple-touch-icon.png" alt="" width="112" height="112">'}
+      <h1 class="login-title" id="main-heading">${s.t}</h1><p class="login-sub">${s.b}</p>
+    </div>
+    <div class="tour-foot">
+      <div class="tour-dots" aria-hidden="true">${S.map((_,i)=>`<i class="${i===tourStep?'on':''}"></i>`).join('')}</div>
+      <p class="sr" role="status">${L(`Step ${tourStep+1} of ${S.length}`,`Langkah ${tourStep+1} daripada ${S.length}`,`Langkah ${tourStep+1} dari ${S.length}`)}</p>
+      <button type="button" class="btn primary block login-btn" data-act="${last?'tour-done':'tour-next'}">${last?L('Get started','Mula sekarang','Mulai'):L('Continue','Teruskan','Lanjutkan')}</button>
+    </div></section>`;
+}
+function tourGo(d){tourDir=d<0?'back':'';tourStep+=d;render();focusHeading()}
+function tourEnd(){setTourSeen(true);tourStep=0;tourDir='';if(route()!=='home')location.hash='home';render();focusHeading()}
+let tourX=null;
+document.addEventListener('touchstart',e=>{tourX=document.querySelector('.tour')?e.touches[0].clientX:null},{passive:true});
+document.addEventListener('touchend',e=>{if(tourX===null||!document.querySelector('.tour'))return;const dx=e.changedTouches[0].clientX-tourX;tourX=null;
+  if(dx<-50&&tourStep<tourSteps().length-1)tourGo(1);else if(dx>50&&tourStep>0)tourGo(-1)},{passive:true});
 
 function vConsent(){
   return `<section class="login pad">
@@ -1121,8 +1165,11 @@ function vProfile(){
     ${notifSettings()}
     <div class="card stack" style="gap:14px"><div><p class="eyebrow">${L('Language and display','Bahasa dan paparan')}</p></div>
       <button type="button" class="li row-btn" data-act="customize" style="border-top:none;padding-top:0"><span class="ib">${I('sliders')}</span><span class="grow"><span class="t">${L('Customize Home','Ubah suai Utama')}</span><span class="s">${L('Choose which cards you see first, and hide the rest','Pilih kad yang anda lihat dahulu, dan sembunyikan yang lain')}</span></span>${I('chev')}</button>
+      <button type="button" class="li row-btn" data-act="tour"><span class="ib">${I('spark')}</span><span class="grow"><span class="t">${L('Welcome tour','Lawatan pengenalan','Tur perkenalan')}</span><span class="s">${L('See how SMISKEE works again','Lihat semula cara SMISKEE berfungsi','Lihat lagi cara kerja SMISKEE')}</span></span>${I('chev')}</button>
       <div role="group" aria-labelledby="lang-lbl"><p class="f" id="lang-lbl">${I('globe','sm')} ${L('Language','Bahasa')}</p>
         <div class="seg three">${LANGS.map(l=>`<button data-act="set-lang" data-v="${l}" lang="${l}" aria-label="${LANG_NAMES[l]}" aria-pressed="${LANG===l}">${{en:'English',ms:'Melayu',id:'Indonesia'}[l]}</button>`).join('')}</div></div>
+      <div role="group" aria-labelledby="theme-lbl"><p class="f" id="theme-lbl">${I('moon','sm')} ${L('Appearance','Penampilan','Tampilan')}</p>
+        <div class="seg three">${[['auto',L('Automatic','Automatik','Otomatis')],['light',L('Light','Cerah','Terang')],['dark',L('Dark','Gelap','Gelap')]].map(([v,l])=>`<button data-act="set-theme" data-v="${v}" aria-pressed="${THEME===v}">${l}</button>`).join('')}</div></div>
       <div role="group" aria-labelledby="text-lbl"><p class="f" id="text-lbl">${I('type','sm')} ${L('Text size','Saiz teks')}</p>
         <div class="seg three"><button data-act="set-text" data-v="md" aria-pressed="${TEXT==='md'}">${L('Standard','Biasa')}</button><button data-act="set-text" data-v="lg" aria-pressed="${TEXT==='lg'}" style="font-size:1.0625rem">${L('Large','Besar')}</button><button data-act="set-text" data-v="xl" aria-pressed="${TEXT==='xl'}" style="font-size:1.1875rem">${L('Extra large','Sangat besar')}</button></div></div>
     </div>
@@ -1572,6 +1619,11 @@ document.addEventListener('click',e=>{
     case 'lang-menu':langSheet();break;
     case 'lang':run(()=>act.setLanguage(v)).then(()=>{if(!$('#sheet').hidden)closeSheet();else if(st)render();else keepLogin(()=>{})});break;
     case 'set-lang':run(()=>act.setLanguage(v),()=>L('Language changed to English','Bahasa ditukar ke Bahasa Malaysia')).then(render);break;
+    case 'set-theme':setTheme(v);render();break;
+    case 'tour':setTourSeen(false);tourStep=0;tourDir='';render();focusHeading();break;
+    case 'tour-next':tourGo(1);break;
+    case 'tour-back':tourGo(-1);break;
+    case 'tour-done':tourEnd();break;
     case 'set-text':setText(v);render();toast(L('Text size updated','Saiz teks dikemas kini'));break;
     case 'lrole':loginRole=v;document.querySelectorAll('[data-act=lrole]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));break;
     case 'demo':st=seed(L('Irfan Hakim','Irfan Hakim'),'MY-1842','Digital Banking',loginRole);saveLocal();location.hash='home';render();toast(L('Signed in as a sample employee','Log masuk sebagai pekerja contoh'));break;

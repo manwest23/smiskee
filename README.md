@@ -75,6 +75,8 @@ Setting it up on a new Supabase project:
 - **Languages:** every screen, the quiz and notifications are available in English, Bahasa Malaysia and Bahasa Indonesia. People switch with the globe button on the sign-in page or in Profile. The Malay and Indonesian text was written for this app; a native-speaker review before launch is recommended. Indonesian text lives in `public/i18n-id.js` (keyed by the English text) and in `supabase/migrations/005_indonesian.sql` for notifications.
 - **Customize Home:** people reorder Home cards (drag or arrows) and switch cards off under Home → Customize Home or Profile. The layout is saved to their account.
 - **Look and feel:** San Francisco system fonts on Apple devices (SF Pro, SF Pro Rounded for numbers, SF Mono for codes); other devices use their own system font. The bottom menu slides away while scrolling down and returns when scrolling up.
+- **Welcome tour:** four short screens shown once per device after the first sign-in (check-in, games and rewards, weekly recap and privacy). It can be skipped, and replayed from Profile.
+- **Dark mode:** Profile → Appearance offers Automatic (follows the phone), Light or Dark. The choice is kept on the device.
 - **Accessibility:** colours meet WCAG 2.1 AA contrast, text size can be set to Standard / Large / Extra large in Profile, all controls work with a keyboard and screen reader, and pop-ups keep focus inside until closed.
 
 ## What the database enforces
