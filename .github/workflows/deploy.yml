@@ -34,7 +34,7 @@ jobs:
               "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "${STAFF_EMAIL_DOMAIN:-staff.smiskee.app}" > public/config.js
             echo "Database connected: $SUPABASE_URL"
           else
-            echo "::warning::SUPABASE_URL or SUPABASE_ANON_KEY is not set, so SMISKEE is deployed in demo mode."
+            echo "Using the database settings in public/config.js."
           fi
           # New cache name on every deploy so phones pick up the update
           sed -i "s/smiskee-v1/smiskee-${GITHUB_SHA::8}/" public/sw.js
