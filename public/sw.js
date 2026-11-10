@@ -3,7 +3,7 @@
    Fonts and the Supabase library: cached after first use.
    Database calls are never cached. */
 const CACHE = 'smiskee-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest',
+const SHELL = ['./', './index.html', './manifest.webmanifest', './i18n-id.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png', './icons/logo-mark.png', './icons/logo-full.png', './icons/badge-96.png'];
 
 self.addEventListener('install', e => {

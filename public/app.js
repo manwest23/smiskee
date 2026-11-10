@@ -1,5 +1,5 @@
 'use strict';
-/* SMISKEE — employee motivation app, in English and Bahasa Malaysia.
+/* SMISKEE — employee motivation app, in English, Bahasa Malaysia and Bahasa Indonesia.
    Two modes:
    - cloud: Supabase is configured in config.js. Real accounts (staff ID + password),
             data in Postgres, and every points rule runs inside the database.
@@ -7,9 +7,14 @@
             kept in this browser only, with sample history. */
 
 /* ---------- language and text size ---------- */
-let LANG=(()=>{try{const v=localStorage.getItem('smiskee-lang');if(v==='en'||v==='ms')return v}catch(e){}return /^(ms|id)/i.test(navigator.language||'')?'ms':'en'})();
-const L=(en,ms)=>LANG==='ms'?ms:en;
-function setLang(l){LANG=l==='ms'?'ms':'en';try{localStorage.setItem('smiskee-lang',LANG)}catch(e){}document.documentElement.lang=LANG}
+const LANGS=['en','ms','id'];
+const LANG_NAMES={en:'English',ms:'Bahasa Malaysia',id:'Bahasa Indonesia'};
+let LANG=(()=>{try{const v=localStorage.getItem('smiskee-lang');if(LANGS.includes(v))return v}catch(e){}const n=navigator.language||'';return /^(id|in)\b/i.test(n)?'id':/^ms/i.test(n)?'ms':'en'})();
+/* Indonesian text lives in i18n-id.js, keyed by the English text. A sentence with
+   changing parts passes its Indonesian version as the third argument instead. */
+const ID_TEXT=window.SMISKEE_ID||{};
+const L=(en,ms,idn)=>LANG==='en'?en:LANG==='ms'?ms:idn!==undefined?idn:(typeof en==='string'&&ID_TEXT[en])||ms;
+function setLang(l){LANG=LANGS.includes(l)?l:'en';try{localStorage.setItem('smiskee-lang',LANG)}catch(e){}document.documentElement.lang=LANG}
 document.documentElement.lang=LANG;
 let TEXT=(()=>{try{const v=localStorage.getItem('smiskee-text');return ['md','lg','xl'].includes(v)?v:'md'}catch(e){return 'md'}})();
 function setText(t){TEXT=t;try{localStorage.setItem('smiskee-text',t)}catch(e){}}
@@ -72,11 +77,11 @@ const toKL=iso=>new Date(new Date(iso).toLocaleString('en-US',{timeZone:TZ}));
 const klKey=iso=>dkey(toKL(iso));
 const today=()=>dkey(nowKL());
 const fmt=n=>Number(n).toLocaleString('en-MY');
-const mon=i=>L(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'])[i];
-const dowInitials=()=>L(['M','T','W','T','F','S','S'],['I','S','R','K','J','S','A']);
-const dayShort=i=>L(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],['Ahd','Isn','Sel','Rab','Kha','Jum','Sab'])[i];
-const dayLong=i=>L(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],['Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu','Ahad'])[i];
-const clock=d=>{const h=d.getHours(),m=d.getMinutes();return LANG==='ms'?`${h%12||12}:${pad(m)} ${h<12?'pagi':'petang'}`:`${h%12||12}:${pad(m)} ${h<12?'AM':'PM'}`};
+const mon=i=>L(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'],['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'])[i];
+const dowInitials=()=>L(['M','T','W','T','F','S','S'],['I','S','R','K','J','S','A'],['S','S','R','K','J','S','M']);
+const dayShort=i=>L(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],['Ahd','Isn','Sel','Rab','Kha','Jum','Sab'],['Min','Sen','Sel','Rab','Kam','Jum','Sab'])[i];
+const dayLong=i=>L(['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],['Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu','Ahad'],['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'])[i];
+const clock=d=>{const h=d.getHours(),m=d.getMinutes();return LANG==='id'?`${pad(h)}.${pad(m)}`:LANG==='ms'?`${h%12||12}:${pad(m)} ${h<12?'pagi':'petang'}`:`${h%12||12}:${pad(m)} ${h<12?'AM':'PM'}`};
 const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const initials=n=>String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 const firstName=n=>String(n||'').trim().split(/\s+/)[0];
@@ -88,10 +93,10 @@ const MOODS=[{id:'great',face:'◠◡◠',en:'Great',ms:'Gembira'},{id:'good',fa
 const moodLabel=id=>{const m=MOODS.find(x=>x.id===id);return m?L(m.en,m.ms):''};
 const TAGS=['Sales targets','Customer queue','Compliance & audit','System issues','Workload','Month-end closing','Personal'];
 const TAG_MS={'Sales targets':'Sasaran jualan','Customer queue':'Barisan pelanggan','Compliance & audit':'Pematuhan & audit','System issues':'Masalah sistem','Workload':'Beban kerja','Month-end closing':'Tutup akaun hujung bulan','Personal':'Peribadi'};
-const tTag=t=>LANG==='ms'?(TAG_MS[t]||t):t;
+const tTag=t=>L(t,TAG_MS[t]||t);
 const DEPTS=['Retail Banking','Digital Banking','Operations','Credit & Risk','Treasury','Compliance'];
 const DEPT_MS={'Retail Banking':'Perbankan Runcit','Digital Banking':'Perbankan Digital','Operations':'Operasi','Credit & Risk':'Kredit & Risiko','Treasury':'Perbendaharaan','Compliance':'Pematuhan'};
-const tDept=d=>LANG==='ms'?(DEPT_MS[d]||d):d;
+const tDept=d=>L(d,DEPT_MS[d]||d);
 const BADGES=[
  {id:'Team Player',ms:'Pemain Berpasukan',icon:'team'},
  {id:'Positive Energy',ms:'Tenaga Positif',icon:'spark'},
@@ -156,8 +161,8 @@ const REWARDS=[
 const BRAND_MS={'Extended lunch (1 hour)':'Rehat makan tengah hari lanjutan (1 jam)','Half-day leave':'Cuti separuh hari'};
 const PERK_MS={'1 HR':'1 JAM','½ DAY':'½ HARI'};
 const CAT_MS={All:'Semua',Coffee:'Kopi',Food:'Makanan','Time off':'Cuti','My coupons':'Kupon saya'};
-const tBrand=b=>LANG==='ms'?(BRAND_MS[b]||b):b;
-const tCat=c=>LANG==='ms'?(CAT_MS[c]||c):c;
+const tBrand=b=>L(b,BRAND_MS[b]||b);
+const tCat=c=>L(c,CAT_MS[c]||c);
 const DEPT_BASE={'Retail Banking':18420,'Digital Banking':17240,'Operations':16300,'Credit & Risk':14750,'Treasury':12100,'Compliance':11600};
 const GAME_TITLES={quiz:'Banking Knowledge Quiz',memory:'Memory Match',breath:'Focus breathing',brain:'Quick Brain Break'};
 const SEG=[20,50,30,100,40,150,60,80];
@@ -174,22 +179,23 @@ const TITLE_MS={'Daily check-in':'Daftar masuk harian','Banking Knowledge Quiz':
  'Focus breathing':'Pernafasan fokus','Quick Brain Break':'Rehat Minda Pantas','Spin & Win':'Putar & Menang','Reward redeemed':'Ganjaran ditebus',
  'Weekly intention set':'Niat mingguan ditetapkan','Sent a thank-you':'Ucapan terima kasih dihantar','Team Player badge':'Lencana Pemain Berpasukan'};
 function trTitle(s){
-  if(LANG!=='ms'||!s)return s;
-  if(TITLE_MS[s])return TITLE_MS[s];
+  if(LANG==='en'||!s)return s;
+  if(TITLE_MS[s])return L(s,TITLE_MS[s]);
+  const b=s.match(/^(.+) badge$/);if(b&&BADGES.some(x=>x.id===b[1]))return L(s,'Lencana '+tBadge(b[1]),'Lencana '+tBadge(b[1]));
   let m;
-  if((m=s.match(/^Leader round with (.+)$/)))return 'Pusingan bersama '+m[1];
-  if((m=s.match(/^Recognised by (.+)$/)))return 'Dihargai oleh '+m[1];
+  if((m=s.match(/^Leader round with (.+)$/)))return L(s,'Pusingan bersama '+m[1],'Ronde bersama '+m[1]);
+  if((m=s.match(/^Recognised by (.+)$/)))return L(s,'Dihargai oleh '+m[1],'Diapresiasi oleh '+m[1]);
   return s;
 }
 function trSub(s){
   if(!s)return s;
   if(BADGES.some(b=>b.id===s))return tBadge(s);
-  if(LANG!=='ms')return s;
+  if(LANG==='en')return s;
   let m;
-  if((m=s.match(/^Stress (\d+)\/10$/)))return `Tekanan ${m[1]}/10`;
-  if((m=s.match(/^(.*) RM(\d+) voucher$/)))return `${m[1]} baucar RM${m[2]}`;
-  if((m=s.match(/^Recognised by (.+)$/)))return 'Dihargai oleh '+m[1];
-  return BRAND_MS[s]||s;
+  if((m=s.match(/^Stress (\d+)\/10$/)))return L(s,`Tekanan ${m[1]}/10`,`Stres ${m[1]}/10`);
+  if((m=s.match(/^(.*) RM(\d+) voucher$/)))return L(s,`${m[1]} baucar RM${m[2]}`,`Voucher ${m[1]} RM${m[2]}`);
+  if((m=s.match(/^Recognised by (.+)$/)))return L(s,'Dihargai oleh '+m[1],'Diapresiasi oleh '+m[1]);
+  return tBrand(s);
 }
 
 /* ---------- backend ---------- */
@@ -310,24 +316,24 @@ function sessionWhen(s){
   const map={'Thu · 12:30 PM':['Thu · 12:30 PM','Kha · 12:30 tengah hari'],'Fri · 4:30 PM':['Fri · 4:30 PM','Jum · 4:30 petang'],'Tomorrow · 12:30 PM':['Tomorrow · 12:30 PM','Esok · 12:30 tengah hari'],'Thu · 4:30 PM':['Thu · 4:30 PM','Kha · 4:30 petang']};
   return map[s.when]?tx(map[s.when]):s.when;
 }
-const tRole=r=>{if(LANG!=='ms'||!r)return r;let m;if((m=r.match(/^Team leader · (.+)$/)))return 'Ketua pasukan · '+tDept(m[1]);
-  const R={'Head of Retail Branches':'Ketua Cawangan Runcit','Head of Operations':'Ketua Operasi','Head of Digital Banking':'Ketua Perbankan Digital'};return R[r]||r};
+const tRole=r=>{if(LANG==='en'||!r)return r;let m;if((m=r.match(/^Team leader · (.+)$/)))return L(r,'Ketua pasukan · ','Ketua tim · ')+tDept(m[1]);
+  const R={'Head of Retail Branches':'Ketua Cawangan Runcit','Head of Operations':'Ketua Operasi','Head of Digital Banking':'Ketua Perbankan Digital'};return L(r,R[r]||r)};
 const ERR_MS=[
- [/You can send up to 5 thank-yous a day/,'Anda boleh menghantar sehingga 5 ucapan terima kasih sehari.'],
- [/You can't send a thank-you to yourself/,'Anda tidak boleh menghantar ucapan terima kasih kepada diri sendiri.'],
- [/^Choose a badge/,'Pilih satu lencana.'],
- [/Colleague not found/,'Rakan sekerja tidak ditemui.'],
- [/asked for a catch-up recently/,'Anda telah meminta perbualan baru-baru ini. Ketua anda sudah dimaklumkan.'],
- [/Only team leaders can host sessions/,'Hanya ketua pasukan boleh mengadakan sesi.'],
- [/session is not live right now|session has ended/,'Sesi ini tidak berlangsung sekarang.'],
- [/Choose when the session starts/,'Pilih bila sesi bermula.'],
- [/This reward is no longer available/,'Ganjaran ini tidak lagi tersedia.'],
- [/You can only plan for this week or next week/,'Anda hanya boleh merancang untuk minggu ini atau minggu depan.']];
+ [/You can send up to 5 thank-yous a day/,'Anda boleh menghantar sehingga 5 ucapan terima kasih sehari.','Anda dapat mengirim hingga 5 ucapan terima kasih per hari.'],
+ [/You can't send a thank-you to yourself/,'Anda tidak boleh menghantar ucapan terima kasih kepada diri sendiri.','Anda tidak dapat mengirim ucapan terima kasih kepada diri sendiri.'],
+ [/^Choose a badge/,'Pilih satu lencana.','Pilih satu lencana.'],
+ [/Colleague not found/,'Rakan sekerja tidak ditemui.','Rekan kerja tidak ditemukan.'],
+ [/asked for a catch-up recently/,'Anda telah meminta perbualan baru-baru ini. Ketua anda sudah dimaklumkan.','Anda baru saja meminta obrolan singkat. Atasan Anda sudah diberi tahu.'],
+ [/Only team leaders can host sessions/,'Hanya ketua pasukan boleh mengadakan sesi.','Hanya ketua tim yang dapat mengadakan sesi.'],
+ [/session is not live right now|session has ended/,'Sesi ini tidak berlangsung sekarang.','Sesi ini sedang tidak berlangsung.'],
+ [/Choose when the session starts/,'Pilih bila sesi bermula.','Pilih kapan sesi dimulai.'],
+ [/This reward is no longer available/,'Ganjaran ini tidak lagi tersedia.','Hadiah ini sudah tidak tersedia.'],
+ [/You can only plan for this week or next week/,'Anda hanya boleh merancang untuk minggu ini atau minggu depan.','Anda hanya dapat membuat rencana untuk minggu ini atau minggu depan.']];
 const friendly=e=>{let m=(e&&(e.message||e.error_description))||String(e);
   if(/fetch|network|Failed to fetch|NetworkError/i.test(m))return L('No connection. Check your internet and try again.','Tiada sambungan. Semak internet anda dan cuba lagi.');
   if(/JWT|sign in again|refresh token/i.test(m))return L('Your session has expired. Please sign in again.','Sesi anda telah tamat. Sila log masuk semula.');
-  const need=m.match(/You need (\d[\d,]*) more points/);if(need)return L(`You need ${need[1]} more points for this reward.`,`Anda perlukan ${need[1]} mata lagi untuk ganjaran ini.`);
-  if(LANG==='ms'){for(const [re,ms] of ERR_MS)if(re.test(m))return ms}
+  const need=m.match(/You need (\d[\d,]*) more points/);if(need)return L(`You need ${need[1]} more points for this reward.`,`Anda perlukan ${need[1]} mata lagi untuk ganjaran ini.`,`Anda perlu ${need[1]} poin lagi untuk hadiah ini.`);
+  if(LANG!=='en'){for(const [re,ms,idn] of ERR_MS)if(re.test(m))return L(m,ms,idn)}
   return m};
 
 /* Every change goes through `act`. Cloud calls a database function and reloads;
@@ -544,10 +550,10 @@ function motivation(w,prev){
   else {head=L('A heavy week. Go easier on yourself next week.','Minggu yang berat. Berlembutlah dengan diri sendiri minggu depan.');body=L('Your stress ran high for most of the week. That is a signal, not a weakness. Plan lighter where you can, and let your leader know what is weighing on you.','Tahap tekanan anda tinggi hampir sepanjang minggu. Itu satu isyarat, bukan kelemahan. Rancang dengan lebih ringan jika boleh, dan beritahu ketua anda apa yang membebankan anda.')}
   if(prev&&prev.avg!=null){
     const d=a-prev.avg;
-    if(d<=-0.5) body+=' '+L(`Your average dropped from ${prev.avg.toFixed(1)} to ${a.toFixed(1)} compared with the week before.`,`Purata anda turun daripada ${prev.avg.toFixed(1)} kepada ${a.toFixed(1)} berbanding minggu sebelumnya.`);
-    else if(d>=0.5) body+=' '+L(`Your average rose from ${prev.avg.toFixed(1)} to ${a.toFixed(1)} compared with the week before.`,`Purata anda naik daripada ${prev.avg.toFixed(1)} kepada ${a.toFixed(1)} berbanding minggu sebelumnya.`);
+    if(d<=-0.5) body+=' '+L(`Your average dropped from ${prev.avg.toFixed(1)} to ${a.toFixed(1)} compared with the week before.`,`Purata anda turun daripada ${prev.avg.toFixed(1)} kepada ${a.toFixed(1)} berbanding minggu sebelumnya.`,`Rata-rata Anda turun dari ${prev.avg.toFixed(1)} menjadi ${a.toFixed(1)} dibanding minggu sebelumnya.`);
+    else if(d>=0.5) body+=' '+L(`Your average rose from ${prev.avg.toFixed(1)} to ${a.toFixed(1)} compared with the week before.`,`Purata anda naik daripada ${prev.avg.toFixed(1)} kepada ${a.toFixed(1)} berbanding minggu sebelumnya.`,`Rata-rata Anda naik dari ${prev.avg.toFixed(1)} menjadi ${a.toFixed(1)} dibanding minggu sebelumnya.`);
   }
-  if(top) body+=' '+L(`Your most common pressure point was ${top.toLowerCase()}.`,`Punca tekanan paling kerap ialah ${tTag(top).toLowerCase()}.`);
+  if(top) body+=' '+L(`Your most common pressure point was ${top.toLowerCase()}.`,`Punca tekanan paling kerap ialah ${tTag(top).toLowerCase()}.`,`Sumber tekanan Anda yang paling sering adalah ${tTag(top).toLowerCase()}.`);
   return {head,body};
 }
 function intentions(w){
@@ -605,7 +611,9 @@ async function refresh(kind){
 }
 
 /* ---------- sign in, create account, reset password ---------- */
-function langBtn(){return `<button class="lang-btn" data-act="lang" data-v="${LANG==='ms'?'en':'ms'}" lang="${LANG==='ms'?'en':'ms'}" aria-label="${LANG==='ms'?'Switch to English':'Tukar ke Bahasa Malaysia'}">${I('globe')}${LANG==='ms'?'EN':'BM'}</button>`}
+function langBtn(){return `<button class="lang-btn" data-act="lang-menu" aria-haspopup="dialog" aria-label="${L('Language','Bahasa')}: ${LANG_NAMES[LANG]}">${I('globe')}${{en:'EN',ms:'BM',id:'ID'}[LANG]}</button>`}
+function langSheet(){G={id:'lang'};openSheet(L('Language','Bahasa'));
+  SB(`<div class="stack" style="gap:8px;padding-bottom:8px" role="group" aria-label="${L('Language','Bahasa')}">${LANGS.map(l=>`<button class="btn ${l===LANG?'primary':'ghost'} block" data-act="lang" data-v="${l}" lang="${l}" aria-pressed="${l===LANG}">${LANG_NAMES[l]}</button>`).join('')}</div>`)}
 function vLogin(){
   const cloud=!!sb, signup=cloud&&authMode==='signup', reset=cloud&&authMode==='reset';
   const err=k=>loginErr[k]?`<p class="err" role="alert">${esc(loginErr[k])}</p>`:'';
@@ -772,7 +780,7 @@ function vHome(){
         <div class="session"><div class="host live" aria-hidden="true">${esc(initials(live.host))}</div><div style="flex:1;min-width:0"><p style="font-weight:700">${esc(live.name)}</p><p class="small muted">${L('Hosted by','Dihoskan oleh')} ${esc(live.host)} · ${L('Double points','Mata berganda')}</p></div></div>
         <button class="btn gold block" data-act="session" data-id="${live.id}">${L('Join the round','Sertai pusingan')}</button></div>`:'',
     week:()=>`<div class="card stack" style="gap:12px">
-        <div class="row between"><div><p class="eyebrow">${recapReady?L('Your weekly recap is ready','Ringkasan mingguan anda sudah sedia'):L('Your week so far','Minggu anda setakat ini')}</p><p style="font-weight:700;margin-top:2px">${w.avg!=null?L(`Average stress ${w.avg.toFixed(1)}/10`,`Purata tekanan ${w.avg.toFixed(1)}/10`):L('No check-ins yet','Belum ada daftar masuk')}</p></div><a class="link" href="#recap">${L('Open recap','Buka ringkasan')}</a></div>
+        <div class="row between"><div><p class="eyebrow">${recapReady?L('Your weekly recap is ready','Ringkasan mingguan anda sudah sedia'):L('Your week so far','Minggu anda setakat ini')}</p><p style="font-weight:700;margin-top:2px">${w.avg!=null?L(`Average stress ${w.avg.toFixed(1)}/10`,`Purata tekanan ${w.avg.toFixed(1)}/10`,`Rata-rata stres ${w.avg.toFixed(1)}/10`):L('No check-ins yet','Belum ada daftar masuk')}</p></div><a class="link" href="#recap">${L('Open recap','Buka ringkasan')}</a></div>
         ${weekDots(w)}</div>`,
     actions:()=>`<div><h2 class="sec-title" style="margin-bottom:10px">${L('Quick actions','Tindakan pantas')}</h2>
         <div class="qa">
@@ -782,7 +790,7 @@ function vHome(){
           ${lead?`<button data-go="team"><span class="ib">${I('team')}</span>${L('Team pulse','Nadi pasukan')}</button>`:`<button data-go="recap"><span class="ib">${I('chart')}</span>${L('Recap','Ringkasan')}</button>`}
         </div></div>`,
     kudos:()=>`<div class="card stack" style="gap:12px"><div class="row between"><p class="eyebrow">${L('Thank-yous','Ucapan terima kasih')}</p><a class="link" href="#kudos">${L('See all','Lihat semua')}</a></div>
-        ${lastKudos?`<div class="session"><span class="ib kudos-ib">${I(badgeIcon(lastKudos.badge))}</span><div style="flex:1;min-width:0"><p style="font-weight:700">${esc(tBadge(lastKudos.badge))}</p><p class="small muted">${L(`From ${esc(lastKudos.from_name)}`,`Daripada ${esc(lastKudos.from_name)}`)} · ${relDay(klKey(lastKudos.created_at))}</p>${lastKudos.message?`<p class="small" style="margin-top:4px">"${esc(lastKudos.message)}"</p>`:''}</div></div>`
+        ${lastKudos?`<div class="session"><span class="ib kudos-ib">${I(badgeIcon(lastKudos.badge))}</span><div style="flex:1;min-width:0"><p style="font-weight:700">${esc(tBadge(lastKudos.badge))}</p><p class="small muted">${L(`From ${esc(lastKudos.from_name)}`,`Daripada ${esc(lastKudos.from_name)}`,`Dari ${esc(lastKudos.from_name)}`)} · ${relDay(klKey(lastKudos.created_at))}</p>${lastKudos.message?`<p class="small" style="margin-top:4px">"${esc(lastKudos.message)}"</p>`:''}</div></div>`
           :`<p class="small muted">${L('Recognise a colleague today. They get 30 points and a badge.','Hargai rakan sekerja hari ini. Mereka dapat 30 mata dan satu lencana.')}</p>`}
         <a href="#kudos" class="btn ghost block" style="text-decoration:none">${I('heart')}${L('Say thank you','Ucapkan terima kasih')}</a></div>`,
     activity:()=>`<div class="card"><div class="row between" style="margin-bottom:12px"><h2 class="sec-title">${L('Recent activity','Aktiviti terkini')}</h2></div>
@@ -834,7 +842,7 @@ function moveSection(id,dir){
   const i=arrange.findIndex(x=>x.id===id),j=i+dir;
   if(i<0||j<0||j>=arrange.length)return;
   animateArrange(()=>{const [x]=arrange.splice(i,1);arrange.splice(j,0,x)},`[data-act=${dir<0?'arr-up':'arr-down'}][data-id="${id}"]`);
-  toast(L(`Moved to position ${j+1}`,`Dipindahkan ke kedudukan ${j+1}`));
+  toast(L(`Moved to position ${j+1}`,`Dipindahkan ke kedudukan ${j+1}`,`Dipindahkan ke posisi ${j+1}`));
 }
 /* Drag with a finger or mouse: the card follows the pointer, the others slide out of the way. */
 function startDrag(e,li){
@@ -874,7 +882,7 @@ function actRow(a){
 }
 function weekDots(w){
   const t=today(), D=dowInitials();
-  return `<div class="week" role="list">${w.keys.map((k,i)=>{const c=w.cis[i];const d=w.days[i];const lbl=`${dayLong(i)}: ${c?L(`stress ${c.stress} of 10`,`tekanan ${c.stress} daripada 10`):L('no check-in','tiada daftar masuk')}`;
+  return `<div class="week" role="list">${w.keys.map((k,i)=>{const c=w.cis[i];const d=w.days[i];const lbl=`${dayLong(i)}: ${c?L(`stress ${c.stress} of 10`,`tekanan ${c.stress} daripada 10`,`stres ${c.stress} dari 10`):L('no check-in','tiada daftar masuk')}`;
     return `<div role="listitem" aria-label="${lbl}"><div class="d" aria-hidden="true">${D[i]}</div><div class="dot ${c?band(c.stress):''} ${k===t?'today':''}" aria-hidden="true">${c?c.stress:''}</div></div>`}).join('')}</div>`;
 }
 
@@ -934,7 +942,7 @@ function vGames(){
   const lb=cache.lb, max=lb&&lb.length?Math.max(1,...lb.map(x=>x[1])):1;
   return `${header(L('Play & grow','Main & berkembang'),L('Take a break. Play. Earn.','Berehat. Bermain. Kumpul mata.'),L('Short games, real rewards. Points count once per game each day.','Permainan singkat, ganjaran sebenar. Mata dikira sekali bagi setiap permainan setiap hari.'))}
   <main class="pad lift stack" id="main">
-    <div class="card forest row between"><div class="row">${I('flame')}<div><p class="small muted">${L('Games left with points today','Permainan berbaki dengan mata hari ini')}</p><p style="font-weight:800;font-size:1.25rem" class="num">${left} ${L('of','daripada')} ${GAMES.length}</p></div></div><span class="chip gold num">${L(`${streak()}-day streak`,`Rentetan ${streak()} hari`)}</span></div>
+    <div class="card forest row between"><div class="row">${I('flame')}<div><p class="small muted">${L('Games left with points today','Permainan berbaki dengan mata hari ini')}</p><p style="font-weight:800;font-size:1.25rem" class="num">${left} ${L('of','daripada')} ${GAMES.length}</p></div></div><span class="chip gold num">${L(`${streak()}-day streak`,`Rentetan ${streak()} hari`,`Runtutan ${streak()} hari`)}</span></div>
 
     <div class="card stack" style="gap:14px"><div><p class="eyebrow">${L('Play with your leaders','Bermain bersama ketua')}</p><h2 class="sec-title" style="margin-top:2px">${L('Leader sessions','Sesi ketua')}</h2><p class="small muted">${L('Leaders host live rounds. Join to earn double points and the Leader Round badge.','Ketua mengadakan pusingan langsung. Sertai untuk mata berganda dan lencana Pusingan Pemimpin.')}</p></div>
       ${st.sessions.length?`<div class="list">${st.sessions.map(s=>{const done=sessionDone(s.id), rem=st.reminders.includes(s.id);
@@ -951,7 +959,7 @@ function vGames(){
       return `<button class="game" data-act="play" data-g="${g.id}"><span class="gi" style="background:${bg};color:${fg}" aria-hidden="true">${g.gi}</span><div><h3>${tx(g.name)}</h3><p>${tx(g.desc)}</p></div>
       <div class="foot">${done?`<span class="done-tag">${I('check')} ${L('Earned today','Diperoleh hari ini')}</span>`:`<span class="chip gold">${typeof g.pts==='number'?g.pts+' '+L('pts','mata'):tx(g.pts)}</span>`}<span class="go">${done&&g.id!=='spin'?L('Replay','Main lagi'):done?L('View','Lihat'):L('Play','Main')}</span></div></button>`}).join('')}</div></div>
 
-    <div class="card lb"><div style="margin-bottom:12px"><p class="eyebrow">${L('Team battle · this week','Pertandingan pasukan · minggu ini')}</p><h2 class="sec-title" style="margin-top:2px">${L('Department leaderboard','Papan pendahulu jabatan')}</h2><p class="small muted">${L(`Every point you earn this week counts for ${esc(st.user.dept)}.`,`Setiap mata yang anda kumpul minggu ini dikira untuk ${esc(tDept(st.user.dept))}.`)}</p></div>
+    <div class="card lb"><div style="margin-bottom:12px"><p class="eyebrow">${L('Team battle · this week','Pertandingan pasukan · minggu ini')}</p><h2 class="sec-title" style="margin-top:2px">${L('Department leaderboard','Papan pendahulu jabatan')}</h2><p class="small muted">${L(`Every point you earn this week counts for ${esc(st.user.dept)}.`,`Setiap mata yang anda kumpul minggu ini dikira untuk ${esc(tDept(st.user.dept))}.`,`Setiap poin yang Anda kumpulkan minggu ini dihitung untuk ${esc(tDept(st.user.dept))}.`)}</p></div>
       ${!lb?`<p class="small muted">${cache.lbErr?esc(cache.lbErr):L('Loading the leaderboard…','Memuatkan papan pendahulu…')}</p>`
       :`<div class="list">${lb.map(([d,p],i)=>`<div class="li ${d===st.user.dept?'me':''}"><span class="rank">${i+1}</span><div class="grow"><div class="row between"><p class="t">${esc(tDept(d))}${d===st.user.dept?' '+L('(you)','(anda)'):''}</p><span class="small num" style="font-weight:700">${fmt(p)}</span></div><div class="bar-h" aria-hidden="true"><i style="width:${p/max*100}%"></i></div></div></div>`).join('')}</div>`}
       ${st.mode==='demo'?`<p class="small muted" style="margin-top:12px">${L("Other departments' totals are sample figures in demo mode.",'Jumlah jabatan lain ialah angka contoh dalam mod demo.')}</p>`:''}</div>
@@ -966,15 +974,15 @@ function vRewards(){
     <div class="card forest row between"><div><p class="small muted">${L('Your balance','Baki anda')}</p><p class="num" style="font-size:1.75rem;font-weight:800;letter-spacing:-.03em">${fmt(st.points)} ${L('pts','mata')}</p></div><a href="#games" class="btn gold sm-btn" style="text-decoration:none">${L('Earn more','Kumpul lagi')}</a></div>
     <div class="filters" role="toolbar" aria-label="${L('Filter rewards','Tapis ganjaran')}">${cats.map(c=>`<button data-act="filter" data-v="${c}" aria-pressed="${rewardFilter===c}">${tCat(c)}${c==='My coupons'?` (${st.coupons.length})`:''}</button>`).join('')}</div>
     ${rewardFilter==='My coupons'?(st.coupons.length?[...st.coupons].reverse().map(c=>{const r=rewards().find(x=>x.id===c.rid)||{c:'#315c4c'};const exp=c.exp?new Date(c.exp):addDays(pdate(c.d),30);
-      const label=c.label==='Company perk'?L('Company perk','Faedah syarikat'):LANG==='ms'?c.label.replace(/^RM(\d+) voucher$/,'Baucar RM$1'):c.label;
+      const label=c.label==='Company perk'?L('Company perk','Faedah syarikat'):L(c.label,c.label.replace(/^RM(\d+) voucher$/,'Baucar RM$1'),c.label.replace(/^RM(\d+) voucher$/,'Voucher RM$1'));
       return `<div class="reward">${voucher(r)}<div class="grow"><h3>${esc(tBrand(c.brand))}</h3><p class="small muted">${esc(label)} · ${L('valid until','sah sehingga')} ${exp.getDate()} ${mon(exp.getMonth())}</p><p class="num mono" style="margin-top:4px">${esc(c.code)}</p></div><button class="x" data-act="copy" data-code="${esc(c.code)}" aria-label="${L('Copy code','Salin kod')} ${esc(c.code)}">${I('copy')}</button></div>`}).join(''):`<div class="card flat"><p class="muted">${L("You haven't redeemed any rewards yet.",'Anda belum menebus sebarang ganjaran.')}</p></div>`)
     :`<p class="small muted">${list.length} ${L('rewards','ganjaran')}</p>`+list.map(r=>{const can=st.points>=r.pts;
-      return `<div class="reward">${voucher(r)}<div class="grow"><p class="eyebrow" style="font-size:.625rem">${r.cat==='Time off'?L('Company perk','Faedah syarikat'):L('Digital voucher','Baucar digital')}</p><h3>${esc(tBrand(r.brand))}</h3><p class="small muted">${can?L('Available instantly','Tersedia serta-merta'):L(`${fmt(r.pts-st.points)} more pts needed`,`Perlu ${fmt(r.pts-st.points)} mata lagi`)}</p></div>
+      return `<div class="reward">${voucher(r)}<div class="grow"><p class="eyebrow" style="font-size:.625rem">${r.cat==='Time off'?L('Company perk','Faedah syarikat'):L('Digital voucher','Baucar digital')}</p><h3>${esc(tBrand(r.brand))}</h3><p class="small muted">${can?L('Available instantly','Tersedia serta-merta'):L(`${fmt(r.pts-st.points)} more pts needed`,`Perlu ${fmt(r.pts-st.points)} mata lagi`,`Perlu ${fmt(r.pts-st.points)} poin lagi`)}</p></div>
       <button class="btn ${can?'primary':'ghost'} sm-btn" data-act="redeem" data-id="${r.id}" ${can?'':'disabled'} aria-label="${L('Redeem','Tebus')} ${esc(tBrand(r.brand))}, ${fmt(r.pts)} ${L('points','mata')}"><span class="num">${fmt(r.pts)}</span></button></div>`}).join('')}
     ${st.mode==='demo'?`<p class="small muted">${L("Voucher codes in demo mode are for illustration and can't be used at outlets.",'Kod baucar dalam mod demo hanya untuk contoh dan tidak boleh digunakan di kedai.')}</p>`:''}
   </main>`;
 }
-function voucher(r){const perk=r.perk?(LANG==='ms'?(PERK_MS[r.perk]||r.perk):r.perk):null;return `<div class="voucher" style="background:${esc(r.c)}" aria-hidden="true"><b>${esc(perk||'RM'+r.val)}</b><span>${r.perk?L('PERK','FAEDAH'):L('VOUCHER','BAUCAR')}</span></div>`}
+function voucher(r){const perk=r.perk?L(r.perk,PERK_MS[r.perk]||r.perk):null;return `<div class="voucher" style="background:${esc(r.c)}" aria-hidden="true"><b>${esc(perk||'RM'+r.val)}</b><span>${r.perk?L('PERK','FAEDAH'):L('VOUCHER','BAUCAR')}</span></div>`}
 
 function vRecap(){
   const off=recapWeek==='this'?0:-1, w=weekData(off), prev=weekData(off-1), m=motivation(w,prev);
@@ -1024,7 +1032,7 @@ function vTeam(){
       <button class="btn primary block" type="submit">${L('Publish session','Siarkan sesi')}</button></form>`;
   const privacy=`<div class="card flat note">${I('lock')}<div>${L('You only see anonymous averages. Results appear when five or more people have checked in this week, and no individual answers or notes are ever shown. If someone asks you for a catch-up, you only see their name and the request.','Anda hanya melihat purata tanpa nama. Keputusan muncul apabila lima orang atau lebih telah daftar masuk minggu ini, dan jawapan atau nota individu tidak pernah ditunjukkan. Jika seseorang meminta untuk berbual, anda hanya melihat nama mereka dan permintaan itu.')}</div></div>`;
   if(!t) return `${head}<main class="pad lift stack" id="main"><div class="card"><p class="muted">${cache.pulseErr?esc(cache.pulseErr):L('Loading your team pulse…','Memuatkan nadi pasukan…')}</p></div>${hostForm}${privacy}</main>`;
-  if(!t.enough) return `${head}<main class="pad lift stack" id="main"><div class="card stack" style="gap:10px"><p class="eyebrow">${L('Not enough check-ins yet','Belum cukup daftar masuk')}</p><h2 class="sec-title">${L(`${t.checked} of 5 people have checked in this week`,`${t.checked} daripada 5 orang telah daftar masuk minggu ini`)}</h2><p class="small muted">${L(`To protect privacy, the team pulse appears once at least five people in ${esc(t.department)} have checked in. Your department has ${t.members} ${t.members===1?'member':'members'} on SMISKEE.`,`Untuk melindungi privasi, nadi pasukan muncul selepas sekurang-kurangnya lima orang dalam ${esc(tDept(t.department))} telah daftar masuk. Jabatan anda mempunyai ${t.members} ahli di SMISKEE.`)}</p><div class="track light" aria-hidden="true"><i style="width:${Math.min(100,t.checked/5*100)}%"></i></div></div>${hostForm}${privacy}</main>`;
+  if(!t.enough) return `${head}<main class="pad lift stack" id="main"><div class="card stack" style="gap:10px"><p class="eyebrow">${L('Not enough check-ins yet','Belum cukup daftar masuk')}</p><h2 class="sec-title">${L(`${t.checked} of 5 people have checked in this week`,`${t.checked} daripada 5 orang telah daftar masuk minggu ini`,`${t.checked} dari 5 orang telah check-in minggu ini`)}</h2><p class="small muted">${L(`To protect privacy, the team pulse appears once at least five people in ${esc(t.department)} have checked in. Your department has ${t.members} ${t.members===1?'member':'members'} on SMISKEE.`,`Untuk melindungi privasi, nadi pasukan muncul selepas sekurang-kurangnya lima orang dalam ${esc(tDept(t.department))} telah daftar masuk. Jabatan anda mempunyai ${t.members} ahli di SMISKEE.`,`Untuk melindungi privasi, denyut tim muncul setelah setidaknya lima orang di ${esc(tDept(t.department))} telah check-in. Departemen Anda memiliki ${t.members} anggota di SMISKEE.`)}</p><div class="track light" aria-hidden="true"><i style="width:${Math.min(100,t.checked/5*100)}%"></i></div></div>${hostForm}${privacy}</main>`;
   const avg=Number(t.avg), prevAvg=t.prev_avg!=null?Number(t.prev_avg):null, diff=prevAvg!=null?avg-prevAvg:null;
   const dist=[['calm',t.calm,L('Calm','Tenang')],['press',t.press,L('Pressured','Tertekan')],['high',t.high,L('High','Tinggi')]];
   const top=t.tags&&t.tags[0]?t.tags[0].tag:null;
@@ -1038,7 +1046,7 @@ function vTeam(){
       <div class="row small muted" style="margin-top:8px;gap:14px;flex-wrap:wrap">${dist.map(([b,n,l])=>`<span><b style="color:var(--${b})" aria-hidden="true">●</b> ${l} ${n}</span>`).join('')}</div></div>
     </div>
     ${t.tags&&t.tags.length?`<div class="card"><p class="eyebrow">${L('Top pressure points','Punca tekanan utama')}</p><div class="stack" style="gap:10px;margin-top:12px">${t.tags.map(x=>`<div><div class="row between small"><span style="font-weight:600">${esc(tTag(x.tag))}</span><span class="muted num">${x.people} ${L(x.people===1?'person':'people','orang')}</span></div><div class="bar-h" aria-hidden="true"><i style="width:${x.people/t.checked*100}%;background:var(--press)"></i></div></div>`).join('')}</div></div>`:''}
-    ${top?`<div class="card forest stack" style="gap:8px"><p class="eyebrow">${L('Suggested action','Tindakan dicadangkan')}</p><p style="font-weight:700;font-size:1.0625rem">${L(`${esc(top)} is the main pressure point.`,`${esc(tTag(top))} ialah punca tekanan utama.`)}</p><p class="small" style="color:var(--on-forest-muted)">${esc(tx(TEAM_TIPS[top])||L('Talk to the team about what would help this week.','Berbincang dengan pasukan tentang apa yang boleh membantu minggu ini.'))} ${L('A short game round on Thursday afternoon can also lift energy.','Pusingan permainan ringkas pada petang Khamis juga boleh menaikkan semangat.')}</p></div>`:''}
+    ${top?`<div class="card forest stack" style="gap:8px"><p class="eyebrow">${L('Suggested action','Tindakan dicadangkan')}</p><p style="font-weight:700;font-size:1.0625rem">${L(`${esc(top)} is the main pressure point.`,`${esc(tTag(top))} ialah punca tekanan utama.`,`${esc(tTag(top))} adalah sumber tekanan utama.`)}</p><p class="small" style="color:var(--on-forest-muted)">${esc(tx(TEAM_TIPS[top])||L('Talk to the team about what would help this week.','Berbincang dengan pasukan tentang apa yang boleh membantu minggu ini.'))} ${L('A short game round on Thursday afternoon can also lift energy.','Pusingan permainan ringkas pada petang Khamis juga boleh menaikkan semangat.')}</p></div>`:''}
     ${hostForm}${privacy}
   </main>`;
 }
@@ -1085,7 +1093,7 @@ function kudosResults(){
 }
 function kudosRow(k){
   const when=k.created_at?relDay(klKey(k.created_at)):'';
-  const who=kd.tab==='received'?L(`From ${k.from_name}`,`Daripada ${k.from_name}`):kd.tab==='sent'?L(`To ${k.to_name}`,`Kepada ${k.to_name}`):`${k.from_name} → ${k.to_name}`;
+  const who=kd.tab==='received'?L(`From ${k.from_name}`,`Daripada ${k.from_name}`,`Dari ${k.from_name}`):kd.tab==='sent'?L(`To ${k.to_name}`,`Kepada ${k.to_name}`,`Untuk ${k.to_name}`):`${k.from_name} → ${k.to_name}`;
   return `<div class="li" style="align-items:flex-start"><span class="ib">${I(badgeIcon(k.badge))}</span><div class="grow"><p class="t">${esc(tBadge(k.badge))}</p><p class="s">${esc(who)} · ${when}</p>${k.message?`<p class="small" style="margin-top:4px">"${esc(k.message)}"</p>`:''}</div></div>`;
 }
 let kTimer=null;
@@ -1114,7 +1122,7 @@ function vProfile(){
     <div class="card stack" style="gap:14px"><div><p class="eyebrow">${L('Language and display','Bahasa dan paparan')}</p></div>
       <button type="button" class="li row-btn" data-act="customize" style="border-top:none;padding-top:0"><span class="ib">${I('sliders')}</span><span class="grow"><span class="t">${L('Customize Home','Ubah suai Utama')}</span><span class="s">${L('Choose which cards you see first, and hide the rest','Pilih kad yang anda lihat dahulu, dan sembunyikan yang lain')}</span></span>${I('chev')}</button>
       <div role="group" aria-labelledby="lang-lbl"><p class="f" id="lang-lbl">${I('globe','sm')} ${L('Language','Bahasa')}</p>
-        <div class="seg"><button data-act="set-lang" data-v="en" lang="en" aria-pressed="${LANG==='en'}">English</button><button data-act="set-lang" data-v="ms" lang="ms" aria-pressed="${LANG==='ms'}">Bahasa Malaysia</button></div></div>
+        <div class="seg three">${LANGS.map(l=>`<button data-act="set-lang" data-v="${l}" lang="${l}" aria-label="${LANG_NAMES[l]}" aria-pressed="${LANG===l}">${{en:'English',ms:'Melayu',id:'Indonesia'}[l]}</button>`).join('')}</div></div>
       <div role="group" aria-labelledby="text-lbl"><p class="f" id="text-lbl">${I('type','sm')} ${L('Text size','Saiz teks')}</p>
         <div class="seg three"><button data-act="set-text" data-v="md" aria-pressed="${TEXT==='md'}">${L('Standard','Biasa')}</button><button data-act="set-text" data-v="lg" aria-pressed="${TEXT==='lg'}" style="font-size:1.0625rem">${L('Large','Besar')}</button><button data-act="set-text" data-v="xl" aria-pressed="${TEXT==='xl'}" style="font-size:1.1875rem">${L('Extra large','Sangat besar')}</button></div></div>
     </div>
@@ -1141,7 +1149,7 @@ function privacyHTML(){
   const ul=a=>`<ul class="plain-list">${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
   return `<div class="stack privacy" style="gap:16px">
     <p class="small muted">${L('Version 1 · Last updated 11 November 2026','Versi 1 · Dikemas kini 11 November 2026')}</p>
-    ${sec(L('Who we are','Siapa kami'),`<p>${L(`SMISKEE is your organisation's employee wellbeing and motivation app. Your organisation is responsible for the personal data in SMISKEE. For questions or requests, contact ${c}.`,`SMISKEE ialah aplikasi kesejahteraan dan motivasi pekerja organisasi anda. Organisasi anda bertanggungjawab ke atas data peribadi dalam SMISKEE. Untuk pertanyaan atau permintaan, hubungi ${c}.`)}</p>`)}
+    ${sec(L('Who we are','Siapa kami'),`<p>${L(`SMISKEE is your organisation's employee wellbeing and motivation app. Your organisation is responsible for the personal data in SMISKEE. For questions or requests, contact ${c}.`,`SMISKEE ialah aplikasi kesejahteraan dan motivasi pekerja organisasi anda. Organisasi anda bertanggungjawab ke atas data peribadi dalam SMISKEE. Untuk pertanyaan atau permintaan, hubungi ${c}.`,`SMISKEE adalah aplikasi kesejahteraan dan motivasi karyawan organisasi Anda. Organisasi Anda bertanggung jawab atas data pribadi di SMISKEE. Untuk pertanyaan atau permintaan, hubungi ${c}.`)}</p>`)}
     ${sec(L('What we collect','Apa yang kami kumpul'),ul([
       L('<b>Account details:</b> your name, staff ID, department and role.','<b>Butiran akaun:</b> nama, ID kakitangan, jabatan dan peranan anda.'),
       L('<b>Wellbeing check-ins:</b> your stress level, mood, what is weighing on you and any private notes. This can reveal information about your health, so we ask for your explicit consent first. Check-ins are optional.','<b>Daftar masuk kesejahteraan:</b> tahap tekanan, mood, apa yang membebankan anda dan nota peribadi. Maklumat ini boleh mendedahkan maklumat kesihatan anda, jadi kami meminta kebenaran jelas anda dahulu. Daftar masuk adalah pilihan.'),
@@ -1160,7 +1168,7 @@ function privacyHTML(){
       L('Download a copy of your data: Profile → Download my data.','Muat turun salinan data anda: Profil → Muat turun data saya.'),
       L('Turn reminders on or off: Profile → Notifications.','Hidupkan atau matikan peringatan: Profil → Pemberitahuan.'),
       L('Withdraw your consent and erase your data: Profile → Delete my account.','Tarik balik kebenaran dan padam data anda: Profil → Padam akaun saya.'),
-      L(`Ask to correct your details, or ask any question: contact ${c}.`,`Minta pembetulan butiran anda, atau tanya apa-apa soalan: hubungi ${c}.`)]))}
+      L(`Ask to correct your details, or ask any question: contact ${c}.`,`Minta pembetulan butiran anda, atau tanya apa-apa soalan: hubungi ${c}.`,`Minta perbaikan data Anda, atau ajukan pertanyaan apa pun: hubungi ${c}.`)]))}
     ${sec(L('Changes','Perubahan'),`<p>${L('If this notice changes in an important way, SMISKEE will ask you to agree again.','Jika notis ini berubah dengan ketara, SMISKEE akan meminta persetujuan anda semula.')}</p>`)}
     <button class="btn primary block" data-act="close">${L('Close','Tutup')}</button>
   </div>`;
@@ -1185,7 +1193,7 @@ function deleteSheet(){
   SB(`<div class="stack" style="gap:14px">
     <div class="support"><b>${L("This can't be undone.",'Tindakan ini tidak boleh dibatalkan.')}</b><p class="small">${demo?L('All demo data on this device will be removed.','Semua data demo pada peranti ini akan dibuang.'):L('Your account, check-ins, notes, points, vouchers, badges, thank-yous and notifications will be permanently deleted. This also withdraws your consent.','Akaun, daftar masuk, nota, mata, baucar, lencana, ucapan terima kasih dan pemberitahuan anda akan dipadam secara kekal. Ini juga menarik balik kebenaran anda.')}</p></div>
     ${demo?'':`<p class="small">${L('Want a copy first?','Mahu salinan dahulu?')} <button type="button" class="inline-link" data-act="export">${L('Download my data','Muat turun data saya')}</button></p>`}
-    <div><label class="f" for="del-confirm">${L(`Type your staff ID (${esc(st.user.staffId)}) to confirm`,`Taip ID kakitangan anda (${esc(st.user.staffId)}) untuk mengesahkan`)}</label><input type="text" id="del-confirm" autocomplete="off" autocapitalize="characters"></div>
+    <div><label class="f" for="del-confirm">${L(`Type your staff ID (${esc(st.user.staffId)}) to confirm`,`Taip ID kakitangan anda (${esc(st.user.staffId)}) untuk mengesahkan`,`Ketik ID karyawan Anda (${esc(st.user.staffId)}) untuk mengonfirmasi`)}</label><input type="text" id="del-confirm" autocomplete="off" autocapitalize="characters"></div>
     <button class="btn danger block" data-act="delete-confirm" id="del-btn" disabled>${I('trash')}${demo?L('Delete demo data','Padam data demo'):L('Delete my account','Padam akaun saya')}</button>
     <button class="btn ghost block" data-act="close">${L('Cancel','Batal')}</button></div>`);
   const i=$('#del-confirm');i.addEventListener('input',()=>{$('#del-btn').disabled=normStaff(i.value)!==st.user.staffId});
@@ -1202,7 +1210,7 @@ async function doExport(){
 function catchupSheet(){
   G={id:'catchup'};openSheet(L('Ask for a catch-up','Minta untuk berbual'));
   SB(`<div class="stack" style="gap:14px">
-    <p>${L(`We'll let the team leaders in ${esc(st.user.dept)} know you'd like a 15-minute catch-up.`,`Kami akan memaklumkan ketua pasukan dalam ${esc(tDept(st.user.dept))} bahawa anda mahu berbual 15 minit.`)}</p>
+    <p>${L(`We'll let the team leaders in ${esc(st.user.dept)} know you'd like a 15-minute catch-up.`,`Kami akan memaklumkan ketua pasukan dalam ${esc(tDept(st.user.dept))} bahawa anda mahu berbual 15 minit.`,`Kami akan memberi tahu ketua tim di ${esc(tDept(st.user.dept))} bahwa Anda ingin mengobrol 15 menit.`)}</p>
     <div class="card flat note">${I('lock')}<div>${L("They'll only see your name and the request. We won't share your stress scores, moods, notes or why you asked.",'Mereka hanya akan melihat nama anda dan permintaan itu. Kami tidak akan berkongsi skor tekanan, mood, nota atau sebab anda meminta.')}</div></div>
     <button class="btn primary block" data-act="catchup-send" id="cu-btn">${L('Send request','Hantar permintaan')}</button>
     <button class="btn ghost block" data-act="close">${L('Cancel','Batal')}</button></div>`);
@@ -1217,7 +1225,7 @@ const NOTIF_TYPES=[
 const NOTIF_ICON={checkin:'pulse',session:'game',recap:'chart',coupon:'gift',badge:'trophy',test:'bell',kudos:'heart',catchup:'team'};
 const unreadCount=()=>st&&st.notifs?st.notifs.filter(n=>!n.read).length:0;
 function bellBtn(){const n=unreadCount();return `<button class="bell" data-act="notifs" aria-label="${L('Notifications','Pemberitahuan')}${n?`, ${n} ${L('unread','belum dibaca')}`:''}">${I('bell')}${n?`<span class="count" aria-hidden="true">${n>9?'9+':n}</span>`:''}</button>`}
-function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return L('Just now','Baru sahaja');if(m<60)return L(`${m} min ago`,`${m} minit lalu`);const h=Math.round(m/60);if(h<24)return L(h===1?'1 hour ago':`${h} hours ago`,`${h} jam lalu`);
+function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return L('Just now','Baru sahaja');if(m<60)return L(`${m} min ago`,`${m} minit lalu`,`${m} menit lalu`);const h=Math.round(m/60);if(h<24)return L(h===1?'1 hour ago':`${h} hours ago`,`${h} jam lalu`);
   const d=toKL(ts);return (dkey(d)===dkey(addDays(nowKL(),-1))?L('Yesterday','Semalam'):`${d.getDate()} ${mon(d.getMonth())}`)+` · ${clock(d)}`}
 
 /* Phone push: 'unsupported' | 'ios-install' | 'denied' | 'off' | 'on' */
@@ -1363,18 +1371,18 @@ function startGame(id,opts={}){
 }
 function drawQuiz(){
   if(G.i>=G.qs.length){
-    if(G.id==='session') return finish(act.session(G.s,G.score),L(`Hosted by ${G.s.host}`,`Dihoskan oleh ${G.s.host}`),L(`You got ${G.score} of 5 right. Leader rounds pay double points.`,`Anda betul ${G.score} daripada 5. Pusingan ketua memberi mata berganda.`),L('You already played this round.','Anda sudah bermain pusingan ini.'));
-    return finish(act.game('quiz',G.score),L('Quiz complete','Kuiz selesai'),L(`You got ${G.score} of 5 right.`,`Anda betul ${G.score} daripada 5.`),G.score?ALREADY():'');
+    if(G.id==='session') return finish(act.session(G.s,G.score),L(`Hosted by ${G.s.host}`,`Dihoskan oleh ${G.s.host}`,`Dipandu oleh ${G.s.host}`),L(`You got ${G.score} of 5 right. Leader rounds pay double points.`,`Anda betul ${G.score} daripada 5. Pusingan ketua memberi mata berganda.`,`Anda benar ${G.score} dari 5. Ronde pemimpin memberi poin ganda.`),L('You already played this round.','Anda sudah bermain pusingan ini.'));
+    return finish(act.game('quiz',G.score),L('Quiz complete','Kuiz selesai'),L(`You got ${G.score} of 5 right.`,`Anda betul ${G.score} daripada 5.`,`Anda benar ${G.score} dari 5.`),G.score?ALREADY():'');
   }
   const q=G.qs[G.i];
-  SB(`<div class="stack"><div><div class="row between small muted"><span>${L(`Question ${G.i+1} of 5`,`Soalan ${G.i+1} daripada 5`)}</span><span class="num">${L('Score','Skor')} ${G.score}</span></div><div class="track light" style="margin-top:6px" aria-hidden="true"><i style="width:${(G.i)/5*100}%"></i></div></div>
+  SB(`<div class="stack"><div><div class="row between small muted"><span>${L(`Question ${G.i+1} of 5`,`Soalan ${G.i+1} daripada 5`,`Pertanyaan ${G.i+1} dari 5`)}</span><span class="num">${L('Score','Skor')} ${G.score}</span></div><div class="track light" style="margin-top:6px" aria-hidden="true"><i style="width:${(G.i)/5*100}%"></i></div></div>
     <h3 class="q" id="q-text">${tx(q.q)}</h3><div class="opts" role="group" aria-labelledby="q-text">${q.o.map((o,k)=>`<button class="opt ${G.ans!=null?(k===q.a?'right':k===G.ans?'wrong':''):''}" data-act="qa" data-k="${k}" ${G.ans!=null?'disabled':''}>${qo(o)}${G.ans!=null&&k===q.a?`<span class="sr"> (${L('correct answer','jawapan betul')})</span>`:''}</button>`).join('')}</div>
     ${G.ans!=null?`<p class="explain" role="status"><b style="color:${G.ans===q.a?'var(--calm)':'var(--high)'}">${G.ans===q.a?L('Correct.','Betul.'):L('Not quite.','Kurang tepat.')}</b> ${tx(q.e)}</p><button class="btn primary block" data-act="qnext">${G.i<4?L('Next question','Soalan seterusnya'):L('See results','Lihat keputusan')}</button>`:''}</div>`);
   if(G.ans!=null)setTimeout(()=>{const b=document.querySelector('[data-act=qnext]');b&&b.focus()},20);
 }
 function drawMemory(){
   SB(`<div class="stack"><div class="row between small muted"><span>${L('Find all 6 pairs','Cari kesemua 6 pasangan')}</span><span class="num" aria-live="polite">${L('Moves','Langkah')}: ${G.moves}</span></div>
-  <div class="mgrid">${G.cards.map((c,i)=>{const ok=G.ok.includes(i),up=G.up.includes(i);return `<button class="mc ${ok?'ok':up?'up':'hid'}" data-act="flip" data-i="${i}" aria-label="${ok?`${c}, ${L('matched','dipadankan')}`:up?c:L(`Card ${i+1}, hidden`,`Kad ${i+1}, tersembunyi`)}" ${ok?'disabled':''}>${c}</button>`}).join('')}</div>
+  <div class="mgrid">${G.cards.map((c,i)=>{const ok=G.ok.includes(i),up=G.up.includes(i);return `<button class="mc ${ok?'ok':up?'up':'hid'}" data-act="flip" data-i="${i}" aria-label="${ok?`${c}, ${L('matched','dipadankan')}`:up?c:L(`Card ${i+1}, hidden`,`Kad ${i+1}, tersembunyi`,`Kartu ${i+1}, tersembunyi`)}" ${ok?'disabled':''}>${c}</button>`}).join('')}</div>
   <p class="small muted">${L('Finish in 10 moves or fewer for 100 pts, 14 or fewer for 70 pts.','Selesaikan dalam 10 langkah atau kurang untuk 100 mata, 14 atau kurang untuk 70 mata.')}</p></div>`);
 }
 function flip(i){
@@ -1385,7 +1393,7 @@ function flip(i){
     else{G.lock=true;setTimeout(()=>{if(!G||G.id!=='memory')return;G.up=[];G.lock=false;drawMemory()},700)}}
   drawMemory();
   const b=document.querySelector(`[data-act=flip][data-i="${i}"]`);if(b&&!b.disabled)b.focus();
-  if(G.ok.length===12){const moves=G.moves;setTimeout(()=>{if(G&&G.id==='memory')finish(act.game('memory',moves),L('All pairs found','Semua pasangan ditemui'),L(`You finished in ${moves} moves.`,`Anda selesai dalam ${moves} langkah.`),ALREADY())},500)}
+  if(G.ok.length===12){const moves=G.moves;setTimeout(()=>{if(G&&G.id==='memory')finish(act.game('memory',moves),L('All pairs found','Semua pasangan ditemui'),L(`You finished in ${moves} moves.`,`Anda selesai dalam ${moves} langkah.`,`Anda selesai dalam ${moves} langkah.`),ALREADY())},500)}
 }
 function drawSpin(){
   const done=st.spin&&st.spin.d===today();
@@ -1393,7 +1401,7 @@ function drawSpin(){
   const grad=SEG.map((_,i)=>`${i===5?'var(--gold)':cols[i%2]} ${i*45}deg ${(i+1)*45}deg`).join(',');
   const startRot=done?360-(SEG.indexOf(st.spin.v)*45+22.5):0;
   SB(`<div class="stack" style="align-items:center;text-align:center"><div class="wheel-wrap" aria-hidden="true"><div class="pointer"></div><div class="wheel" id="wheel" style="background:conic-gradient(${grad});transform:rotate(${startRot}deg)">${SEG.map((v,i)=>{const a=(i*45+22.5-90)*Math.PI/180;return `<span style="left:${50+Math.cos(a)*33}%;top:${50+Math.sin(a)*33}%;transform:translate(-50%,-50%)">${v}</span>`}).join('')}</div><div class="hub">${L('SPIN','PUTAR')}</div></div>
-  ${done?`<p style="font-weight:700">${L(`You won ${st.spin.v} pts today.`,`Anda menang ${st.spin.v} mata hari ini.`)}</p><p class="small muted">${L('Your next free spin unlocks tomorrow.','Putaran percuma seterusnya dibuka esok.')}</p><button class="btn ghost" data-act="close">${L('Close','Tutup')}</button>`:`<p class="small muted">${L('One free spin per day. Prizes from 20 to 150 points.','Satu putaran percuma sehari. Hadiah dari 20 hingga 150 mata.')}</p><button class="btn gold block" data-act="spin" id="spin-btn">${L('Spin the wheel','Putar roda')}</button>`}</div>`);
+  ${done?`<p style="font-weight:700">${L(`You won ${st.spin.v} pts today.`,`Anda menang ${st.spin.v} mata hari ini.`,`Anda memenangkan ${st.spin.v} poin hari ini.`)}</p><p class="small muted">${L('Your next free spin unlocks tomorrow.','Putaran percuma seterusnya dibuka esok.')}</p><button class="btn ghost" data-act="close">${L('Close','Tutup')}</button>`:`<p class="small muted">${L('One free spin per day. Prizes from 20 to 150 points.','Satu putaran percuma sehari. Hadiah dari 20 hingga 150 mata.')}</p><button class="btn gold block" data-act="spin" id="spin-btn">${L('Spin the wheel','Putar roda')}</button>`}</div>`);
 }
 async function doSpin(){
   const btn=$('#spin-btn');if(!btn||btn.disabled)return;btn.disabled=true;btn.textContent=L('Spinning…','Sedang berputar…');
@@ -1402,7 +1410,7 @@ async function doSpin(){
   const rot=360*6+(360-(res.index*45+22.5));
   const wheel=$('#wheel');if(wheel)wheel.style.transform=`rotate(${rot}deg)`;
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  setTimeout(()=>{if(G&&G.id==='spin')resultView(L('Spin & Win','Putar & Menang'),L(`The wheel landed on ${res.points}.`,`Roda berhenti pada ${res.points}.`),res.already?0:res.points,res.already?L('You already spun today.','Anda sudah memutar hari ini.'):'')},reduce?50:4200);
+  setTimeout(()=>{if(G&&G.id==='spin')resultView(L('Spin & Win','Putar & Menang'),L(`The wheel landed on ${res.points}.`,`Roda berhenti pada ${res.points}.`,`Roda berhenti di ${res.points}.`),res.already?0:res.points,res.already?L('You already spun today.','Anda sudah memutar hari ini.'):'')},reduce?50:4200);
 }
 function drawBreath(){
   SB(`<div class="stack" style="align-items:center;text-align:center"><div class="breath" aria-hidden="true"><div class="orb" id="orb"></div><b id="b-count">4</b></div>
@@ -1418,7 +1426,7 @@ function breathStart(){
     if(t>=total){clearInterval(timer);timer=null;return finish(act.game('breath',1),L('Nicely done','Syabas'),L('You completed four rounds of box breathing.','Anda telah menyelesaikan empat pusingan pernafasan kotak.'),ALREADY())}
     const p=Math.floor(t/4)%4, left=4-(t%4);
     if(t%4===0)$('#b-phase').textContent=phases[p][0];
-    $('#b-count').textContent=left;$('#b-sub').textContent=L(`Round ${Math.floor(t/16)+1} of 4`,`Pusingan ${Math.floor(t/16)+1} daripada 4`);
+    $('#b-count').textContent=left;$('#b-sub').textContent=L(`Round ${Math.floor(t/16)+1} of 4`,`Pusingan ${Math.floor(t/16)+1} daripada 4`,`Putaran ${Math.floor(t/16)+1} dari 4`);
     $('#orb').style.transform=`scale(${phases[p][1]})`;$('#b-prog').style.width=(t/total*100)+'%';t++;
   };
   tick();timer=setInterval(tick,1000);
@@ -1431,9 +1439,9 @@ function mkSum(){
   return {q,o:opts.map(x=>'RM '+x.toFixed(2)),a:opts.indexOf(ans)};
 }
 function drawBrain(){
-  if(G.i>=5){const secs=Math.round((Date.now()-G.t0)/1000);return finish(act.game('brain',G.score),L('Brain break done','Rehat minda selesai'),L(`${G.score} of 5 correct in ${secs} seconds.`,`${G.score} daripada 5 betul dalam ${secs} saat.`),G.score?ALREADY():'')}
+  if(G.i>=5){const secs=Math.round((Date.now()-G.t0)/1000);return finish(act.game('brain',G.score),L('Brain break done','Rehat minda selesai'),L(`${G.score} of 5 correct in ${secs} seconds.`,`${G.score} daripada 5 betul dalam ${secs} saat.`,`${G.score} dari 5 benar dalam ${secs} detik.`),G.score?ALREADY():'')}
   const q=G.qs[G.i];
-  SB(`<div class="stack"><div class="row between small muted"><span>${L(`Sum ${G.i+1} of 5`,`Kiraan ${G.i+1} daripada 5`)}</span><span class="num">${L('Score','Skor')} ${G.score}</span></div>
+  SB(`<div class="stack"><div class="row between small muted"><span>${L(`Sum ${G.i+1} of 5`,`Kiraan ${G.i+1} daripada 5`,`Hitungan ${G.i+1} dari 5`)}</span><span class="num">${L('Score','Skor')} ${G.score}</span></div>
   <h3 class="q num" id="b-q" style="font-size:1.625rem;text-align:center;padding-block:12px">${q.q}</h3>
   <div class="opts two" role="group" aria-labelledby="b-q">${q.o.map((o,k)=>`<button class="opt num ${G.ans!=null?(k===q.a?'right':k===G.ans?'wrong':''):''}" style="text-align:center" data-act="ba" data-k="${k}" ${G.ans!=null?'disabled':''}>${o}</button>`).join('')}</div></div>`);
 }
@@ -1454,13 +1462,13 @@ function installSheet(){
 function drawInstall(p){
   const ios=`<ol class="steps">
     <li class="step"><p>${L('Open this page in <b>Safari</b>. Other iPhone browsers may not show the option.','Buka halaman ini dalam <b>Safari</b>. Pelayar iPhone lain mungkin tidak menunjukkan pilihan ini.')}</p></li>
-    <li class="step"><p>${L(`Tap the <span class="kbd">${I('share')}Share</span> button at the bottom of the screen (on iPad it's at the top).`,`Ketik butang <span class="kbd">${I('share')}Kongsi</span> di bahagian bawah skrin (di iPad, di bahagian atas).`)}</p></li>
-    <li class="step"><p>${L(`Scroll down and tap <span class="kbd">${I('plusbox')}Add to Home Screen</span>.`,`Tatal ke bawah dan ketik <span class="kbd">${I('plusbox')}Tambah ke Skrin Utama</span>.`)}</p></li>
+    <li class="step"><p>${L(`Tap the <span class="kbd">${I('share')}Share</span> button at the bottom of the screen (on iPad it's at the top).`,`Ketik butang <span class="kbd">${I('share')}Kongsi</span> di bahagian bawah skrin (di iPad, di bahagian atas).`,`Ketuk tombol <span class="kbd">${I('share')}Bagikan</span> di bagian bawah layar (di iPad, di bagian atas).`)}</p></li>
+    <li class="step"><p>${L(`Scroll down and tap <span class="kbd">${I('plusbox')}Add to Home Screen</span>.`,`Tatal ke bawah dan ketik <span class="kbd">${I('plusbox')}Tambah ke Skrin Utama</span>.`,`Gulir ke bawah dan ketuk <span class="kbd">${I('plusbox')}Tambah ke Layar Utama</span>.`)}</p></li>
     <li class="step"><p>${L('Name it <b>SMISKEE</b> and tap <b>Add</b> in the top-right corner.','Namakan <b>SMISKEE</b> dan ketik <b>Tambah</b> di penjuru kanan atas.')}</p></li></ol>`;
   const android=`<ol class="steps">
     <li class="step"><p>${L('Open this page in <b>Chrome</b>.','Buka halaman ini dalam <b>Chrome</b>.')}</p></li>
-    <li class="step"><p>${L(`Tap the <span class="kbd">${I('dots')}Menu</span> button in the top-right corner.`,`Ketik butang <span class="kbd">${I('dots')}Menu</span> di penjuru kanan atas.`)}</p></li>
-    <li class="step"><p>${L(`Tap <span class="kbd">${I('addhome')}Add to Home screen</span> or <b>Install app</b>.`,`Ketik <span class="kbd">${I('addhome')}Tambah ke Skrin utama</span> atau <b>Pasang aplikasi</b>.`)}</p></li>
+    <li class="step"><p>${L(`Tap the <span class="kbd">${I('dots')}Menu</span> button in the top-right corner.`,`Ketik butang <span class="kbd">${I('dots')}Menu</span> di penjuru kanan atas.`,`Ketuk tombol <span class="kbd">${I('dots')}Menu</span> di pojok kanan atas.`)}</p></li>
+    <li class="step"><p>${L(`Tap <span class="kbd">${I('addhome')}Add to Home screen</span> or <b>Install app</b>.`,`Ketik <span class="kbd">${I('addhome')}Tambah ke Skrin utama</span> atau <b>Pasang aplikasi</b>.`,`Ketuk <span class="kbd">${I('addhome')}Tambahkan ke Layar utama</span> atau <b>Instal aplikasi</b>.`)}</p></li>
     <li class="step"><p>${L('Tap <b>Install</b> to confirm. SMISKEE appears with your other apps.','Ketik <b>Pasang</b> untuk mengesahkan. SMISKEE akan muncul bersama aplikasi lain.')}</p></li></ol>`;
   SB(`<div class="stack">
     ${deferredInstall?`<div class="card forest stack" style="gap:10px"><p style="font-weight:700">${L('Your browser can install SMISKEE directly.','Pelayar anda boleh memasang SMISKEE terus.')}</p><button class="btn gold block" data-act="install-now">${L('Install now','Pasang sekarang')}</button></div>`:''}
@@ -1479,16 +1487,16 @@ function copyCode(code){
 function redeemSheet(id){
   const r=rewards().find(x=>x.id===id);if(!r)return;G={id:'redeem',r};
   openSheet(L('Redeem reward','Tebus ganjaran'));
-  SB(`<div class="stack"><div class="reward" style="box-shadow:none">${voucher(r)}<div class="grow"><h3>${esc(tBrand(r.brand))}</h3><p class="small muted">${r.val?L(`RM${r.val} digital voucher`,`Baucar digital RM${r.val}`):L('Company perk, approved by your leader','Faedah syarikat, diluluskan oleh ketua anda')}</p></div></div>
+  SB(`<div class="stack"><div class="reward" style="box-shadow:none">${voucher(r)}<div class="grow"><h3>${esc(tBrand(r.brand))}</h3><p class="small muted">${r.val?L(`RM${r.val} digital voucher`,`Baucar digital RM${r.val}`,`Voucher digital RM${r.val}`):L('Company perk, approved by your leader','Faedah syarikat, diluluskan oleh ketua anda')}</p></div></div>
   <div class="card flat stack" style="gap:6px"><div class="row between small"><span class="muted">${L('Your balance','Baki anda')}</span><b class="num">${fmt(st.points)} ${L('pts','mata')}</b></div><div class="row between small"><span class="muted">${L('Cost','Kos')}</span><b class="num">− ${fmt(r.pts)} ${L('pts','mata')}</b></div><div class="row between small" style="border-top:1px solid var(--line);padding-top:8px"><span class="muted">${L('After redeeming','Selepas menebus')}</span><b class="num">${fmt(st.points-r.pts)} ${L('pts','mata')}</b></div></div>
-  <button class="btn primary block" data-act="confirm-redeem" id="redeem-btn">${L(`Redeem for ${fmt(r.pts)} pts`,`Tebus dengan ${fmt(r.pts)} mata`)}</button><button class="btn ghost block" data-act="close">${L('Cancel','Batal')}</button></div>`);
+  <button class="btn primary block" data-act="confirm-redeem" id="redeem-btn">${L(`Redeem for ${fmt(r.pts)} pts`,`Tebus dengan ${fmt(r.pts)} mata`,`Tukar dengan ${fmt(r.pts)} poin`)}</button><button class="btn ghost block" data-act="close">${L('Cancel','Batal')}</button></div>`);
 }
 async function confirmRedeem(){
   const r=G.r, btn=$('#redeem-btn'); if(btn.disabled)return; btn.disabled=true; btn.textContent=L('Redeeming…','Sedang menebus…');
   let res;
-  try{res=await act.redeem(r.id)}catch(e){btn.disabled=false;btn.textContent=L(`Redeem for ${fmt(r.pts)} pts`,`Tebus dengan ${fmt(r.pts)} mata`);toast(friendly(e));return}
+  try{res=await act.redeem(r.id)}catch(e){btn.disabled=false;btn.textContent=L(`Redeem for ${fmt(r.pts)} pts`,`Tebus dengan ${fmt(r.pts)} mata`,`Tukar dengan ${fmt(r.pts)} poin`);toast(friendly(e));return}
   const exp=res.exp;
-  SB(`<div class="result" role="status"><p class="eyebrow">${L('Redeemed','Ditebus')}</p><h2 style="font-size:1.375rem">${esc(tBrand(r.brand))}</h2><p class="muted small">${L(`Show this code at the counter. Valid until ${exp.getDate()} ${mon(exp.getMonth())} ${exp.getFullYear()}.`,`Tunjukkan kod ini di kaunter. Sah sehingga ${exp.getDate()} ${mon(exp.getMonth())} ${exp.getFullYear()}.`)}</p>
+  SB(`<div class="result" role="status"><p class="eyebrow">${L('Redeemed','Ditebus')}</p><h2 style="font-size:1.375rem">${esc(tBrand(r.brand))}</h2><p class="muted small">${L(`Show this code at the counter. Valid until ${exp.getDate()} ${mon(exp.getMonth())} ${exp.getFullYear()}.`,`Tunjukkan kod ini di kaunter. Sah sehingga ${exp.getDate()} ${mon(exp.getMonth())} ${exp.getFullYear()}.`,`Tunjukkan kode ini di kasir. Berlaku sampai ${exp.getDate()} ${mon(exp.getMonth())} ${exp.getFullYear()}.`)}</p>
   <div class="code" style="width:100%">${esc(res.code)}</div><div class="row" style="width:100%"><button class="btn ghost" style="flex:1" data-act="copy" data-code="${esc(res.code)}">${I('copy')}${L('Copy code','Salin kod')}</button><button class="btn primary" style="flex:1" data-act="close">${L('Done','Selesai')}</button></div></div>`);
 }
 
@@ -1510,7 +1518,7 @@ async function submitLogin(){
   if(sb&&signin&&!pw)err.pw=L('Enter your password.','Masukkan kata laluan anda.');
   if(sb&&signup&&!$('#l-consent')?.checked)err.consent=L('Please agree to the privacy notice to create an account.','Sila bersetuju dengan notis privasi untuk mencipta akaun.');
   if(Object.keys(err).length){keepLogin(()=>loginErr=err);const f=document.querySelector('.login .err');f&&f.previousElementSibling?.querySelector?.('input')?.focus();return}
-  if(!sb){st=seed(name,id,dept,loginRole);saveLocal();loginErr={};location.hash='home';render();toast(L(`Welcome, ${firstName(name)}`,`Selamat datang, ${firstName(name)}`));return}
+  if(!sb){st=seed(name,id,dept,loginRole);saveLocal();loginErr={};location.hash='home';render();toast(L(`Welcome, ${firstName(name)}`,`Selamat datang, ${firstName(name)}`,`Selamat datang, ${firstName(name)}`));return}
   const btn=$('#login-btn');btn.disabled=true;btn.textContent=signup?L('Creating account…','Mencipta akaun…'):L('Signing in…','Sedang log masuk…');
   try{
     if(signup){
@@ -1523,7 +1531,7 @@ async function submitLogin(){
     }
     await loadCloud();
     if(st.user.lang&&st.user.lang!==LANG&&!signup)setLang(st.user.lang);
-    loginErr={};location.hash='home';render();toast(L(`Welcome, ${firstName(st.user.name)}`,`Selamat datang, ${firstName(st.user.name)}`));refreshPushStatus();
+    loginErr={};location.hash='home';render();toast(L(`Welcome, ${firstName(st.user.name)}`,`Selamat datang, ${firstName(st.user.name)}`,`Selamat datang, ${firstName(st.user.name)}`));refreshPushStatus();
     if(signup){try{const code=await act.newCode();showCode(code,'signup')}catch(e){}}
   }catch(e){
     let m=friendly(e);
@@ -1561,7 +1569,8 @@ document.addEventListener('click',e=>{
   const a=el.dataset.act, v=el.dataset.v;
   switch(a){
     case 'skip':{const m=$('#main')||$('#login');if(m){m.setAttribute('tabindex','-1');m.focus()}break}
-    case 'lang':run(()=>act.setLanguage(v)).then(()=>{if(st)render();else keepLogin(()=>{})});break;
+    case 'lang-menu':langSheet();break;
+    case 'lang':run(()=>act.setLanguage(v)).then(()=>{if(!$('#sheet').hidden)closeSheet();else if(st)render();else keepLogin(()=>{})});break;
     case 'set-lang':run(()=>act.setLanguage(v),()=>L('Language changed to English','Bahasa ditukar ke Bahasa Malaysia')).then(render);break;
     case 'set-text':setText(v);render();toast(L('Text size updated','Saiz teks dikemas kini'));break;
     case 'lrole':loginRole=v;document.querySelectorAll('[data-act=lrole]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));break;
@@ -1576,7 +1585,7 @@ document.addEventListener('click',e=>{
     case 'delete-confirm':{if(el.disabled)break;el.disabled=true;run(()=>act.deleteAccount(),L('Your account and data have been deleted.','Akaun dan data anda telah dipadam.')).then(()=>{if(!st){$('#sheet').hidden=true;document.body.style.overflow='';G=null;history.replaceState(null,'',location.pathname);authMode='signin';render()}else el.disabled=false});break}
     case 'catchup':catchupSheet();break;
     case 'catchup-send':{el.disabled=true;run(()=>act.catchup()).then(n=>{if(n===undefined){el.disabled=false;return}
-      SB(`<div class="result" role="status"><p class="eyebrow">${L('Request sent','Permintaan dihantar')}</p><p style="font-weight:700">${n===-1?L("In demo mode, no request is sent. In the real app, your department's leaders get a notification.",'Dalam mod demo, tiada permintaan dihantar. Dalam aplikasi sebenar, ketua jabatan anda akan menerima pemberitahuan.'):n>0?L("Your leader has been told you'd like a catch-up.",'Ketua anda telah dimaklumkan bahawa anda mahu berbual.'):L(`There's no team leader for ${st.user.dept} on SMISKEE yet. You can still reach out to your manager or HR directly.`,`Belum ada ketua pasukan untuk ${tDept(st.user.dept)} di SMISKEE. Anda masih boleh menghubungi pengurus atau HR secara terus.`)}</p><p class="small muted">${L('Take care of yourself today.','Jaga diri anda hari ini.')}</p><button class="btn primary" data-act="close">${L('Done','Selesai')}</button></div>`)})}break;
+      SB(`<div class="result" role="status"><p class="eyebrow">${L('Request sent','Permintaan dihantar')}</p><p style="font-weight:700">${n===-1?L("In demo mode, no request is sent. In the real app, your department's leaders get a notification.",'Dalam mod demo, tiada permintaan dihantar. Dalam aplikasi sebenar, ketua jabatan anda akan menerima pemberitahuan.'):n>0?L("Your leader has been told you'd like a catch-up.",'Ketua anda telah dimaklumkan bahawa anda mahu berbual.'):L(`There's no team leader for ${st.user.dept} on SMISKEE yet. You can still reach out to your manager or HR directly.`,`Belum ada ketua pasukan untuk ${tDept(st.user.dept)} di SMISKEE. Anda masih boleh menghubungi pengurus atau HR secara terus.`,`Belum ada ketua tim untuk ${tDept(st.user.dept)} di SMISKEE. Anda tetap dapat menghubungi manajer atau HR secara langsung.`)}</p><p class="small muted">${L('Take care of yourself today.','Jaga diri anda hari ini.')}</p><button class="btn primary" data-act="close">${L('Done','Selesai')}</button></div>`)})}break;
     case 'support-dismiss':try{localStorage.setItem('smiskee-support-dismissed',today())}catch(e){}render();break;
     case 'mood':draft.mood=draft.mood===v?null:v;document.querySelectorAll('.mood').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===draft.mood));break;
     case 'tag':{const i=draft.tags.indexOf(v);i>-1?draft.tags.splice(i,1):draft.tags.push(v);el.setAttribute('aria-pressed',draft.tags.includes(v));break}
@@ -1616,7 +1625,7 @@ document.addEventListener('click',e=>{
     case 'itab':installTab=v;drawInstall(platform());break;
     case 'install-now':if(deferredInstall){deferredInstall.prompt();deferredInstall.userChoice.then(c=>{deferredInstall=null;if(c&&c.outcome==='accepted')closeSheet();else drawInstall(platform())}).catch(()=>{})}break;
     case 'rweek':recapWeek=v;render();break;
-    case 'intent':run(()=>act.intent(el.dataset.wk,+el.dataset.i),r=>r.on?(r.points?L(`+${r.points} pts · intention saved`,`+${r.points} mata · niat disimpan`):L('Intention saved','Niat disimpan')):L('Intention removed','Niat dibuang')).then(render);break;
+    case 'intent':run(()=>act.intent(el.dataset.wk,+el.dataset.i),r=>r.on?(r.points?L(`+${r.points} pts · intention saved`,`+${r.points} mata · niat disimpan`,`+${r.points} poin · niat disimpan`):L('Intention saved','Niat disimpan')):L('Intention removed','Niat dibuang')).then(render);break;
     case 'k-pick':{const c=kd.results.find(x=>String(x.id)===el.dataset.id);if(c){kd.to=c;kd.q='';kd.results=[];render();setTimeout(()=>{const b=document.querySelector('.badge-pick');b&&b.focus()},20)}break}
     case 'k-clear':kd.to=null;render();setTimeout(()=>$('#k-q')?.focus(),20);break;
     case 'k-badge':kd.badge=v;document.querySelectorAll('.badge-pick').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));{const s=document.querySelector('#kudos-form [type=submit]');if(s)s.disabled=!(kd.to&&kd.badge)}break;
@@ -1635,7 +1644,7 @@ document.addEventListener('submit',e=>{
     draft.note=$('#ci-note').value.trim();
     const c={stress:draft.stress,mood:draft.mood,tags:[...draft.tags],note:draft.note};
     const btn=e.target.querySelector('[type=submit]');btn.disabled=true;btn.textContent=L('Saving…','Menyimpan…');
-    run(()=>act.checkin(c),pts=>pts?L(`Checked in · +${pts} pts`,`Sudah daftar masuk · +${pts} mata`):first?L('Checked in','Sudah daftar masuk'):L('Check-in updated','Daftar masuk dikemas kini')).then(()=>{
+    run(()=>act.checkin(c),pts=>pts?L(`Checked in · +${pts} pts`,`Sudah daftar masuk · +${pts} mata`,`Check-in berhasil · +${pts} poin`):first?L('Checked in','Sudah daftar masuk'):L('Check-in updated','Daftar masuk dikemas kini')).then(()=>{
       if(st&&st.checkins[today()]){editing=false;draft=null;render();window.scrollTo(0,0);focusHeading()}else{btn.disabled=false;btn.textContent=L('Try again','Cuba lagi')}});
   }
   if(e.target.id==='host-form'){
@@ -1646,7 +1655,7 @@ document.addEventListener('submit',e=>{
     if(!kd.to||!kd.badge)return;
     const btn=e.target.querySelector('[type=submit]');btn.disabled=true;
     const to=kd.to;
-    run(()=>act.sendKudos(kd.to,kd.badge,kd.msg.trim()),pts=>L(`Thank-you sent to ${firstName(to.name)}${pts?` · +${pts} pts`:''}`,`Ucapan terima kasih dihantar kepada ${firstName(to.name)}${pts?` · +${pts} mata`:''}`)).then(r=>{
+    run(()=>act.sendKudos(kd.to,kd.badge,kd.msg.trim()),pts=>L(`Thank-you sent to ${firstName(to.name)}${pts?` · +${pts} pts`:''}`,`Ucapan terima kasih dihantar kepada ${firstName(to.name)}${pts?` · +${pts} mata`:''}`,`Ucapan terima kasih terkirim ke ${firstName(to.name)}${pts?` · +${pts} poin`:''}`)).then(r=>{
       if(r!==undefined){kd={to:null,badge:null,msg:'',tab:'sent',q:'',results:[]};cache.kudosAt=0;cache.kudos=null}
       render();if(isCloud())refresh('kudos');else{const box=$('#kudos-list');if(box)box.innerHTML=kudosListHTML()}});
   }
